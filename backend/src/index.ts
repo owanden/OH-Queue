@@ -1,7 +1,8 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { dataStore } from './data';
-import { initializeSMS, sendSMS } from './sms';
+import { initializeWhatsApp, sendWhatsApp } from './sms';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -10,15 +11,15 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-// Initialize SMS if credentials are provided
+// Initialize WhatsApp if credentials are provided
 if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
-  initializeSMS({
+  initializeWhatsApp({
     accountSid: process.env.TWILIO_ACCOUNT_SID,
     authToken: process.env.TWILIO_AUTH_TOKEN,
-    fromNumber: process.env.TWILIO_FROM_NUMBER || '+1234567890'
+    fromNumber: process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+14155238886'
   });
 } else {
-  console.log('SMS disabled: Missing Twilio credentials');
+  console.log('WhatsApp disabled: Missing Twilio credentials');
 }
 
 // Routes
@@ -124,16 +125,31 @@ app.get('/api/queue/next', (req, res) => {
 app.post('/api/queue/serve', async (req, res) => {
   try {
     const nextStudent = dataStore.serveNextStudent();
-    
+
     if (!nextStudent) {
       return res.status(404).json({ error: 'No students in queue' });
     }
 
-    // Send SMS if student consented
+    // Send WhatsApp notification if student consented
     if (nextStudent.student.consentToSMS) {
-      // Note: In a real implementation, you'd need to store the original phone number
-      // For demo purposes, we'll just log this
-      console.log(`Would send SMS to student: ${nextStudent.student.displayName}`);
+      try {
+        const storedPhone = nextStudent.student.phoneNumber;
+        if (!storedPhone) {
+          console.log(`Failed to send WhatsApp notification to ${nextStudent.student.displayName}: no phone number stored`);
+        } else {
+          const message = `🎓 It's your turn! ${nextStudent.student.displayName}, please come to the office hours desk.`;
+          const notificationSent = await sendWhatsApp(storedPhone, message);
+
+          if (notificationSent) {
+            console.log(`WhatsApp notification sent to ${nextStudent.student.displayName}`);
+          } else {
+            console.log(`Failed to send WhatsApp notification to ${nextStudent.student.displayName}`);
+          }
+        }
+      } catch (notificationError) {
+        console.error('Error sending WhatsApp notification:', notificationError);
+        // Don't fail the request if notification fails
+      }
     }
 
     res.json({
@@ -146,12 +162,39 @@ app.post('/api/queue/serve', async (req, res) => {
   }
 });
 
-app.delete('/api/queue/:studentId', (req, res) => {
+app.delete('/api/queue/:studentId', async (req, res) => {
   try {
     const { studentId } = req.params;
+    const queue = dataStore.getQueue();
+    
+    // Check if we're removing the top student
+    const isTopStudent = queue.length > 0 && queue[0].student.id === studentId;
+    
     const success = dataStore.dropStudent(studentId);
     
     if (success) {
+      // If we removed the top student and there's a next student, notify them
+      if (isTopStudent && queue.length > 1) {
+        const nextStudent = queue[1]; // The new top student after removal
+        
+        if (nextStudent.student.consentToSMS && nextStudent.student.phoneNumber) {
+          try {
+            console.log("Sending WhatsApp notification to", nextStudent.student.phoneNumber);
+            const message = `🎓 You're next in line! ${nextStudent.student.displayName}, please be ready.`;
+            const notificationSent = await sendWhatsApp(nextStudent.student.phoneNumber, message);
+            
+            if (notificationSent) {
+              console.log(`WhatsApp notification sent to ${nextStudent.student.displayName}`);
+            } else {
+              console.log(`Failed to send WhatsApp notification to ${nextStudent.student.displayName}`);
+            }
+          } catch (notificationError) {
+            console.error('Error sending WhatsApp notification:', notificationError);
+            // Don't fail the request if notification fails
+          }
+        }
+      }
+      
       res.json({ message: 'Student dropped from queue' });
     } else {
       res.status(404).json({ error: 'Student not found in queue' });
@@ -174,6 +217,29 @@ if (process.env.NODE_ENV === 'development') {
     res.json({ message: 'All data cleared' });
   });
 }
+
+  // Test WhatsApp endpoint
+  app.post('/api/test-whatsapp', async (req, res) => {
+    try {
+      const { phoneNumber, message } = req.body;
+
+      if (!phoneNumber || !message) {
+        return res.status(400).json({ error: 'Phone number and message are required' });
+      }
+
+      const success = await sendWhatsApp(phoneNumber, message);
+
+      if (success) {
+        res.json({ message: 'WhatsApp message sent successfully' });
+      } else {
+        res.status(500).json({ error: 'Failed to send WhatsApp message' });
+      }
+    } catch (error) {
+      console.error('Error testing WhatsApp:', error);
+      res.status(500).json({ error: 'Failed to send WhatsApp message' });
+    }
+  });
+
 
 app.listen(PORT, () => {
   console.log(`🚀 Backend server running on port ${PORT}`);

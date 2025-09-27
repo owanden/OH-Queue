@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { TA, QueueEntry } from './types';
-import { getTAs, getQueue, addTA, removeTA, addStudentToQueue, dropStudent } from './api';
+import { getTAs, getQueue, addTA, removeTA, addStudentToQueue, dropStudent, serveNextStudent } from './api';
 import TAModal from './components/TAModal';
 import StudentModal from './components/StudentModal';
 
@@ -74,7 +74,14 @@ function App() {
 
 
   const handleDropStudent = async (studentId: string) => {
+    console.log("Dropping student", studentId);
+    
     try {
+      if (studentId === '0' && queue.length !== 0) {
+        console.log("Serving next student");
+        const result =await serveNextStudent();
+        setQueue(queue.filter(entry => entry.student.id !== result.student.id));
+      }
       await dropStudent(studentId);
       setQueue(queue.filter(entry => entry.student.id !== studentId));
     } catch (error) {

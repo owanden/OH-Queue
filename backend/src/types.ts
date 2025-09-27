@@ -7,6 +7,7 @@ export interface TA {
 export interface Student {
   id: string;
   displayName: string;
+  phoneNumber?: string;
   phoneHash: string;
   topic?: string;
   consentToSMS: boolean;

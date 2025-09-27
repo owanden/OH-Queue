@@ -48,6 +48,7 @@ export const dataStore = {
     const student: Student = {
       id: uuidv4(),
       displayName: generateDisplayName(),
+      phoneNumber, // Store actual phone number for SMS
       phoneHash,
       topic,
       consentToSMS,
