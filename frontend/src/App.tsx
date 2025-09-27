@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { TA, QueueEntry } from './types';
-import { getTAs, getQueue, addTA, removeTA, addStudentToQueue, serveNextStudent, dropStudent } from './api';
+import { getTAs, getQueue, addTA, removeTA, addStudentToQueue, dropStudent } from './api';
 import TAModal from './components/TAModal';
 import StudentModal from './components/StudentModal';
 
@@ -50,7 +50,7 @@ function App() {
       console.log('Successfully removed TA from backend');
       setTAs(tas.filter(ta => ta.id !== taId));
       console.log('Updated frontend state');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to remove TA:', error);
       console.error('Error details:', error.response?.data || error.message);
       alert(`Failed to remove TA. Error: ${error.response?.data?.error || error.message}`);
@@ -72,15 +72,6 @@ function App() {
     }
   };
 
-  const handleServeNext = async () => {
-    try {
-      const result = await serveNextStudent();
-      setQueue(queue.filter(entry => entry.student.id !== result.student.id));
-    } catch (error) {
-      console.error('Failed to serve student:', error);
-      alert('Failed to serve student. Please try again.');
-    }
-  };
 
   const handleDropStudent = async (studentId: string) => {
     try {
@@ -103,226 +94,124 @@ function App() {
     );
   }
 
-  // Styling constants for better readability
-  const containerStyles = {
-    main: "min-h-screen bg-gray-900 text-gray-300",
-    header: "bg-white rounded-b-lg",
-    headerContent: "max-w-7xl mx-auto px-6 py-4",
-    title: "text-2xl font-bold text-black",
-    mainContent: "max-w-7xl mx-auto px-6 py-8",
-    grid: "grid grid-cols-1 lg:grid-cols-2 gap-8 h-full"
-  };
-
-  const panelStyles = {
-    container: "bg-gray-800 rounded-lg border border-white p-6 relative",
-    tab: "absolute -top-3 right-4 bg-gray-800 px-3 py-1 rounded-t-lg border-l border-r border-t border-white",
-    tabText: "text-sm font-medium text-gray-300",
-    content: "space-y-4"
-  };
-
-  const listItemStyles = {
-    taItem: "bg-white rounded-full px-4 py-3 flex items-center justify-between",
-    studentItem: "bg-gray-700 rounded-full px-4 py-3 flex items-center justify-between",
-    taName: "text-black font-medium",
-    removeButton: "text-red-400 hover:text-red-300 text-sm"
-  };
-
-  const buttonStyles = {
-    fixedContainer: "fixed bottom-6 left-6 right-6 lg:right-auto lg:w-1/2 lg:max-w-md",
-    fixedContainerRight: "fixed bottom-6 right-6 lg:right-6 lg:w-1/2 lg:max-w-md",
-    addButton: "w-full bg-white hover:bg-gray-100 text-black py-3 px-4 rounded-full border border-gray-300 transition-colors flex items-center justify-center",
-    addButtonIcon: "mr-2 text-lg",
-    serveButton: "bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-full text-sm font-medium transition-colors",
-    dropButton: "text-red-400 hover:text-red-300 text-sm px-2 py-1 rounded-full hover:bg-red-900/20 transition-colors"
-  };
-
-  const studentStyles = {
-    avatar: "w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg",
-    avatarGradient: "bg-gradient-to-br",
-    studentInfo: "flex items-center space-x-4",
-    studentDetails: "flex items-center space-x-2",
-    queueNumber: "text-gray-400 text-sm font-mono",
-    studentName: "text-gray-300 font-medium text-lg",
-    studentTopic: "text-gray-500 text-sm mt-1"
-  };
-
-  const firstStudentStyles = {
-    container: "bg-gray-700 rounded-full px-4 py-3 flex items-center justify-between shadow-lg",
-    transform: 'translateX(-20px)',
-    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2)'
-  };
 
   return (
-    <div className={containerStyles.main}>
-      {/* Header Section */}
-      <header className={containerStyles.header}>
-        <div className={containerStyles.headerContent}>
-          <h1 className={containerStyles.title}>
-            Office Hours Queue
-          </h1>
-        </div>
-      </header>
+    <div className="min-h-screen bg-gray-100">
+      {/* Main Content */}
+      <div className="flex h-screen">
+        {/* Left Side - TA Section */}
+        <div className="w-1/2 bg-blue-900 flex flex-col p-8">
+          {/* Title - Centered between top and TA list */}
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-white">Welcome to TA Office Hours</h1>
+          </div>
 
-      {/* Main Content Section */}
-      <main className={containerStyles.mainContent}>
-        <div className={containerStyles.grid}>
-          
-          {/* TAs Panel */}
-          <div className={panelStyles.container}>
-            {/* Tab Label */}
-            <div className={panelStyles.tab}>
-              <span className={panelStyles.tabText}>TAs</span>
-            </div>
-            
-            {/* TAs List */}
-            <div className={panelStyles.content}>
-              {tas.map(ta => (
-                <div key={ta.id} className={listItemStyles.taItem}>
-                  <span className={listItemStyles.taName}>{ta.name}</span>
-                  <button
+          {/* TA Cards Grid - Centered with max 8 visible */}
+          <div className="flex-1 flex flex-col items-center justify-center">
+            <div className="relative max-w-md w-full">
+              {/* TA Header with count and Add button - Positioned at grid corners */}
+              <div className="absolute -top-12 left-0 right-0 flex items-center justify-between">
+                <h2 className="text-xl text-white">Available TAs ({tas.length})</h2>
+                <button
+                  onClick={() => setShowTAModal(true)}
+                  className="bg-blue-800 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors border-2 border-white"
+                >
+                  Add TA
+                </button>
+              </div>
+              
+              <div className="grid grid-cols-3 gap-4">
+                {tas.slice(0, 8).map(ta => (
+                  <div
+                    key={ta.id}
                     onClick={() => handleRemoveTA(ta.id)}
-                    className={listItemStyles.removeButton}
+                    className="bg-gray-300 rounded-lg p-3 cursor-pointer hover:bg-gray-400 transition-colors group aspect-square"
                   >
-                    Remove
-                  </button>
-                </div>
-              ))}
-              
-              {/* Add New TA Button - Inside the panel */}
-              <button
-                onClick={() => setShowTAModal(true)}
-                className={buttonStyles.addButton}
-              >
-                <span className={buttonStyles.addButtonIcon}>+</span>
-                Add New TA
-              </button>
-            </div>
-          </div>
-
-          {/* Student Queue Panel */}
-          <div className={panelStyles.container}>
-            <div className={panelStyles.content}>
-              {queue.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">No students in queue</p>
-              ) : (
-                <>
-                  {/* First Student - Special Styling with Right Offset */}
-                  {queue.length > 0 && (
-                    <div 
-                      className={firstStudentStyles.container}
-                      style={{
-                        transform: firstStudentStyles.transform,
-                        boxShadow: firstStudentStyles.boxShadow
-                      }}
-                    >
-                      <div className={studentStyles.studentInfo}>
-                        {/* Student Avatar */}
-                        <div className={`${studentStyles.avatar} ${studentStyles.avatarGradient} from-orange-400 to-red-500`}>
-                          {queue[0].student.displayName.split(' ').map(word => word[0]).join('')}
-                        </div>
-                        
-                        {/* Student Details */}
-                        <div>
-                          <div className={studentStyles.studentDetails}>
-                            <span className={studentStyles.queueNumber}>#{queue[0].position}</span>
-                            <span className={studentStyles.studentName}>{queue[0].student.displayName}</span>
-                          </div>
-                          {queue[0].student.topic && (
-                            <p className={studentStyles.studentTopic}>{queue[0].student.topic}</p>
-                          )}
-                        </div>
-                      </div>
-                      
-                      {/* Action Buttons */}
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={handleServeNext}
-                          className={buttonStyles.serveButton}
-                        >
-                          Serve
-                        </button>
-                        <button
-                          onClick={() => handleDropStudent(queue[0].student.id)}
-                          className={buttonStyles.dropButton}
-                        >
-                          Drop
-                        </button>
-                      </div>
+                    {/* Placeholder for TA image - Square */}
+                    <div className="w-full h-20 bg-gray-200 rounded-lg mb-2 flex items-center justify-center">
+                      <span className="text-gray-500 text-xs">TA Photo</span>
                     </div>
-                  )}
-
-                  {/* Remaining Students */}
-                  {queue.slice(1, 6).map((entry, index) => {
-                    // Generate consistent avatar colors based on student ID
-                    const avatarColors = [
-                      'from-yellow-400 to-orange-500', 
-                      'from-green-400 to-blue-500',
-                      'from-purple-400 to-pink-500',
-                      'from-blue-400 to-indigo-500',
-                      'from-pink-400 to-purple-500'
-                    ];
-                    const colorIndex = entry.student.id.charCodeAt(0) % avatarColors.length;
-                    const gradientClass = avatarColors[colorIndex];
-
-                    return (
-                      <div key={entry.student.id} className={listItemStyles.studentItem}>
-                        <div className={studentStyles.studentInfo}>
-                          {/* Student Avatar */}
-                          <div className={`${studentStyles.avatar} ${studentStyles.avatarGradient} ${gradientClass}`}>
-                            {entry.student.displayName.split(' ').map(word => word[0]).join('')}
-                          </div>
-                          
-                          {/* Student Details */}
-                          <div>
-                            <div className={studentStyles.studentDetails}>
-                              <span className={studentStyles.queueNumber}>#{entry.position}</span>
-                              <span className={studentStyles.studentName}>{entry.student.displayName}</span>
-                            </div>
-                            {entry.student.topic && (
-                              <p className={studentStyles.studentTopic}>{entry.student.topic}</p>
-                            )}
-                          </div>
-                        </div>
-                        
-                        {/* Drop Button */}
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => handleDropStudent(entry.student.id)}
-                            className={buttonStyles.dropButton}
-                          >
-                            Drop
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  
-                  {/* More Students Indicator */}
-                  {queue.length > 6 && (
-                    <div className="text-center text-gray-500 text-sm">
-                      <div className="flex justify-center space-x-1 mb-2">
-                        <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
-                        <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
-                        <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
-                      </div>
-                      + {queue.length - 6} more
-                    </div>
-                  )}
-                </>
-              )}
-              
-              {/* Add New Student Button - Inside the panel */}
-              <button
-                onClick={() => setShowStudentModal(true)}
-                className={buttonStyles.addButton}
-              >
-                <span className={buttonStyles.addButtonIcon}>+</span>
-                Add New Student
-              </button>
+                    <p className="text-center text-white font-medium text-sm">{ta.name}</p>
+                  </div>
+                ))}
+                
+                {/* Show gray box only if there are exactly 9+ TAs */}
+                {tas.length >= 9 && (
+                  <div className="bg-gray-600 rounded-lg p-3 flex items-center justify-center aspect-square">
+                    <span className="text-white font-bold text-lg">+{tas.length - 8}</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </main>
+
+        {/* Right Side - Student Queue */}
+        <div className="w-1/2 bg-white p-6">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Student Queue</h2>
+          
+          {queue.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500 text-lg">No students in queue</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {queue.slice(0, 10).map((entry, index) => {
+                // Generate animal avatar based on student name
+                const animals = ['🦒', '🐵', '🦁', '🦎', '🦌', '🐼', '🐸', '🐧', '🦊', '🐨'];
+                const animalIndex = entry.student.id.charCodeAt(0) % animals.length;
+                const animalEmoji = animals[animalIndex];
+
+                return (
+                  <div
+                    key={entry.student.id}
+                    onClick={() => handleDropStudent(entry.student.id)}
+                    className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
+                  >
+                    {/* Animal Avatar */}
+                    <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-xl">
+                      {animalEmoji}
+                    </div>
+                    
+                    {/* Student Info */}
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-gray-500 text-sm font-mono">#{index + 1}</span>
+                        <span className="font-medium text-gray-900">{entry.student.displayName}</span>
+                      </div>
+                      {entry.student.topic && (
+                        <p className="text-sm text-gray-600 mt-1">{entry.student.topic}</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              
+              {/* More Students Indicator */}
+              {queue.length > 10 && (
+                <div className="text-center text-gray-500 text-sm py-4">
+                  <div className="flex justify-center space-x-1 mb-2">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                  </div>
+                  + {queue.length - 10} more
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* Add New Student Button */}
+          <div className="mt-8">
+            <button
+              onClick={() => setShowStudentModal(true)}
+              className="w-full bg-white border-2 border-gray-300 hover:border-gray-400 text-gray-700 py-3 px-4 rounded-lg font-medium transition-colors"
+            >
+              Add New Student
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Modal Components */}
       {showTAModal && (
