@@ -42,15 +42,21 @@ app.post('/api/tas', async (req, res) => {
 app.delete('/api/tas/:id', (req, res) => {
   try {
     const { id } = req.params;
+    console.log('Backend: Attempting to remove TA with ID:', id);
+    console.log('Backend: Current TAs:', dataStore.getActiveTAs().map(ta => ({ id: ta.id, name: ta.name })));
+    
     const success = dataStore.removeTA(id);
+    console.log('Backend: Remove result:', success);
     
     if (success) {
+      console.log('Backend: TA removed successfully');
       res.json({ message: 'TA removed successfully' });
     } else {
+      console.log('Backend: TA not found');
       res.status(404).json({ error: 'TA not found' });
     }
   } catch (error) {
-    console.error('Error removing TA:', error);
+    console.error('Backend: Error removing TA:', error);
     res.status(500).json({ error: 'Failed to remove TA' });
   }
 });

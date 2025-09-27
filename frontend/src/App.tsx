@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TA, QueueEntry } from './types';
-import { getTAs, getQueue, addTA, addStudentToQueue, serveNextStudent, dropStudent } from './api';
+import { getTAs, getQueue, addTA, removeTA, addStudentToQueue, serveNextStudent, dropStudent } from './api';
 import TAModal from './components/TAModal';
 import StudentModal from './components/StudentModal';
 
@@ -40,6 +40,20 @@ function App() {
     } catch (error) {
       console.error('Failed to add TA:', error);
       alert('Failed to add TA. Please try again.');
+    }
+  };
+
+  const handleRemoveTA = async (taId: string) => {
+    try {
+      console.log('Attempting to remove TA with ID:', taId);
+      await removeTA(taId);
+      console.log('Successfully removed TA from backend');
+      setTAs(tas.filter(ta => ta.id !== taId));
+      console.log('Updated frontend state');
+    } catch (error) {
+      console.error('Failed to remove TA:', error);
+      console.error('Error details:', error.response?.data || error.message);
+      alert(`Failed to remove TA. Error: ${error.response?.data?.error || error.message}`);
     }
   };
 
@@ -92,31 +106,32 @@ function App() {
   // Styling constants for better readability
   const containerStyles = {
     main: "min-h-screen bg-gray-900 text-gray-300",
-    header: "bg-gray-800 border-b border-gray-700",
+    header: "bg-white rounded-b-lg",
     headerContent: "max-w-7xl mx-auto px-6 py-4",
-    title: "text-2xl font-bold text-gray-300",
+    title: "text-2xl font-bold text-black",
     mainContent: "max-w-7xl mx-auto px-6 py-8",
     grid: "grid grid-cols-1 lg:grid-cols-2 gap-8 h-full"
   };
 
   const panelStyles = {
-    container: "bg-gray-800 rounded-lg border border-gray-600 p-6 relative",
-    tab: "absolute -top-3 right-4 bg-gray-800 px-3 py-1 rounded-t-lg border-l border-r border-t border-gray-600",
+    container: "bg-gray-800 rounded-lg border border-white p-6 relative",
+    tab: "absolute -top-3 right-4 bg-gray-800 px-3 py-1 rounded-t-lg border-l border-r border-t border-white",
     tabText: "text-sm font-medium text-gray-300",
-    content: "space-y-4 pb-20"
+    content: "space-y-4"
   };
 
   const listItemStyles = {
-    taItem: "bg-gray-700 rounded-full px-4 py-3 flex items-center justify-between",
+    taItem: "bg-white rounded-full px-4 py-3 flex items-center justify-between",
     studentItem: "bg-gray-700 rounded-full px-4 py-3 flex items-center justify-between",
-    taName: "text-gray-300 font-medium",
+    taName: "text-black font-medium",
     removeButton: "text-red-400 hover:text-red-300 text-sm"
   };
 
   const buttonStyles = {
     fixedContainer: "fixed bottom-6 left-6 right-6 lg:right-auto lg:w-1/2 lg:max-w-md",
     fixedContainerRight: "fixed bottom-6 right-6 lg:right-6 lg:w-1/2 lg:max-w-md",
-    addButton: "w-full bg-gray-700 hover:bg-gray-600 text-gray-300 py-3 px-4 rounded-full border border-gray-600 transition-colors",
+    addButton: "w-full bg-white hover:bg-gray-100 text-black py-3 px-4 rounded-full border border-gray-300 transition-colors flex items-center justify-center",
+    addButtonIcon: "mr-2 text-lg",
     serveButton: "bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-full text-sm font-medium transition-colors",
     dropButton: "text-red-400 hover:text-red-300 text-sm px-2 py-1 rounded-full hover:bg-red-900/20 transition-colors"
   };
@@ -133,7 +148,7 @@ function App() {
 
   const firstStudentStyles = {
     container: "bg-gray-700 rounded-full px-4 py-3 flex items-center justify-between shadow-lg",
-    transform: 'translateX(20px)',
+    transform: 'translateX(-20px)',
     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2)'
   };
 
@@ -165,21 +180,20 @@ function App() {
                 <div key={ta.id} className={listItemStyles.taItem}>
                   <span className={listItemStyles.taName}>{ta.name}</span>
                   <button
-                    onClick={() => setTAS(tas.filter(t => t.id !== ta.id))}
+                    onClick={() => handleRemoveTA(ta.id)}
                     className={listItemStyles.removeButton}
                   >
                     Remove
                   </button>
                 </div>
               ))}
-            </div>
-            
-            {/* Fixed Add New TA Button */}
-            <div className={buttonStyles.fixedContainer}>
+              
+              {/* Add New TA Button - Inside the panel */}
               <button
                 onClick={() => setShowTAModal(true)}
                 className={buttonStyles.addButton}
               >
+                <span className={buttonStyles.addButtonIcon}>+</span>
                 Add New TA
               </button>
             </div>
@@ -296,14 +310,13 @@ function App() {
                   )}
                 </>
               )}
-            </div>
-            
-            {/* Fixed Add New Student Button */}
-            <div className={buttonStyles.fixedContainerRight}>
+              
+              {/* Add New Student Button - Inside the panel */}
               <button
                 onClick={() => setShowStudentModal(true)}
                 className={buttonStyles.addButton}
               >
+                <span className={buttonStyles.addButtonIcon}>+</span>
                 Add New Student
               </button>
             </div>
