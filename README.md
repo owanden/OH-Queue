@@ -2,14 +2,14 @@
 
 A modern queue management system for office hours, designed for both students and teaching assistants (TAs). Built with a monorepo architecture using pnpm workspaces.
 
-## 🏗️ Architecture
+## Architecture
 
 - **Backend**: Node.js + Express + TypeScript
 - **Frontend**: React + TypeScript + Vite + Tailwind CSS
 - **Package Manager**: pnpm workspaces
 - **Data Storage**: In-memory (easily switchable to PostgreSQL)
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -59,7 +59,7 @@ pnpm build
 pnpm start
 ```
 
-## 📱 Features
+## Features
 
 ### For Students
 - **Join Queue**: Enter phone number and optional topic
@@ -80,7 +80,7 @@ pnpm start
 - **Real-time Updates**: Queue updates every 2 seconds
 - **Responsive Design**: Works on desktop and mobile devices
 
-## 🔧 API Endpoints
+## API Endpoints
 
 ### TA Management
 - `POST /api/tas` - Add a TA
@@ -98,7 +98,7 @@ pnpm start
 - `GET /api/health` - Health check
 - `POST /api/clear` - Clear all data (development only)
 
-## 🛠️ Development
+## Development
 
 ### Project Structure
 ```
@@ -114,13 +114,23 @@ oh-kiosk/
 ├── frontend/               # React application
 │   ├── src/
 │   │   ├── components/     # React components
+│   │   │   ├── TAModal.tsx
+│   │   │   ├── StudentModal.tsx
+│   │   │   ├── QueueDisplay.tsx
+│   │   │   ├── StudentMode.tsx
+│   │   │   └── TAMode.tsx
 │   │   ├── App.tsx         # Main app component
 │   │   ├── api.ts          # API client
-│   │   └── types.ts        # TypeScript interfaces
+│   │   ├── types.ts        # TypeScript interfaces
+│   │   ├── main.tsx
+│   │   └── index.css
 │   ├── package.json
-│   └── vite.config.ts
+│   ├── vite.config.ts
+│   ├── tailwind.config.js
+│   └── postcss.config.js
 ├── package.json            # Root package.json
 ├── pnpm-workspace.yaml     # pnpm workspace config
+├── pnpm-lock.yaml
 └── README.md
 ```
 
@@ -144,14 +154,14 @@ pnpm add pg @types/pg
 2. Update `backend/src/data.ts` to use PostgreSQL instead of in-memory arrays
 3. Add database connection and migration scripts
 
-## 🔒 Security Features
+## Security Features
 
 - **Phone Number Hashing**: Uses bcryptjs with salt for secure storage
 - **CORS Protection**: Configured for frontend domain
 - **Input Validation**: Server-side validation for all inputs
 - **Anonymous Display**: Students are never identified by real names
 
-## 📦 Deployment
+## Deployment
 
 ### Environment Variables
 
@@ -171,7 +181,7 @@ TWILIO_FROM_NUMBER=your_twilio_phone_number
 3. Start backend: `pnpm --filter backend start`
 4. Serve frontend: Use a static file server or CDN
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature-name`
@@ -179,11 +189,11 @@ TWILIO_FROM_NUMBER=your_twilio_phone_number
 4. Test thoroughly
 5. Submit a pull request
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 🆘 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -200,4 +210,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ---
 
-Built with ❤️ for better office hours management
+Built for better office hours management
