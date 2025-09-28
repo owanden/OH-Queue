@@ -1,13 +1,17 @@
 import { useState, useEffect } from 'react';
 import { TA, QueueEntry } from './types';
-import { getTAs, getQueue, addTA, removeTA, addStudentToQueue, dropStudent, serveNextStudent } from './api';
+import { getTAs, getQueue, addTA, removeTA, addStudentToQueue, dropStudent, serveNextStudent, setAuthToken, getRoom } from './api';
 import TAModal from './components/TAModal';
 import StudentModal from './components/StudentModal';
+import Login from './components/Login';
 
 function App() {
   const [tas, setTAs] = useState<TA[]>([]);
   const [queue, setQueue] = useState<QueueEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem('authToken'));
+  const [currentRoom, setCurrentRoom] = useState<{ code: string; asGuest: boolean } | null>(null);
+  const [roomDetails, setRoomDetails] = useState<any | null>(null);
   const [showTAModal, setShowTAModal] = useState(false);
   const [showStudentModal, setShowStudentModal] = useState(false);
 
@@ -31,6 +35,33 @@ function App() {
     const interval = setInterval(fetchData, 2000); // Refresh every 2 seconds
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (token) {
+      setAuthToken(token);
+      localStorage.setItem('authToken', token);
+    } else {
+      setAuthToken(null);
+      localStorage.removeItem('authToken');
+    }
+  }, [token]);
+
+  // When a room is entered, fetch its details
+  useEffect(() => {
+    if (!currentRoom) {
+      setRoomDetails(null);
+      return;
+    }
+    (async () => {
+      try {
+        const r = await getRoom(currentRoom.code);
+        setRoomDetails(r);
+      } catch (err) {
+        console.error('Failed to fetch room details', err);
+        setRoomDetails(null);
+      }
+    })();
+  }, [currentRoom]);
 
   const handleAddTA = async (name: string) => {
     try {
@@ -75,11 +106,11 @@ function App() {
 
   const handleDropStudent = async (studentId: string) => {
     console.log("Dropping student", studentId);
-    
+
     try {
       if (studentId === '0' && queue.length !== 0) {
         console.log("Serving next student");
-        const result =await serveNextStudent();
+        const result = await serveNextStudent();
         setQueue(queue.filter(entry => entry.student.id !== result.student.id));
       }
       await dropStudent(studentId);
@@ -90,7 +121,7 @@ function App() {
     }
   };
 
-  if (loading) {
+  if (loading && !currentRoom) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-center">
@@ -101,9 +132,30 @@ function App() {
     );
   }
 
+  // If not in a room, show login/landing view
+  if (!currentRoom) {
+    return (
+      <Login
+        onAuthenticated={(t, _u) => { setToken(t); }}
+        onEnterRoom={(code, asGuest) => setCurrentRoom({ code, asGuest })}
+      />
+    );
+  }
+
 
   return (
     <div className="min-h-screen bg-gray-100">
+      {/* Room header */}
+      <div className="bg-white border-b p-4 flex items-center justify-between">
+        <div>
+          <h1 className="text-lg font-bold">{roomDetails ? `Room: ${roomDetails.name}` : `Room: ${currentRoom.code}`}</h1>
+          <p className="text-sm text-gray-500">Code: {currentRoom.code}</p>
+        </div>
+        <div>
+          <button onClick={() => setCurrentRoom(null)} className="px-3 py-1 border rounded">Leave Room</button>
+        </div>
+      </div>
+
       {/* Main Content */}
       <div className="flex h-screen">
         {/* Left Side - TA Section */}
@@ -126,7 +178,7 @@ function App() {
                   Add TA
                 </button>
               </div>
-              
+
               <div className="grid grid-cols-3 gap-4 border-2 border-white rounded-lg p-4">
                 {tas.slice(0, 8).map(ta => (
                   <div
@@ -141,7 +193,7 @@ function App() {
                     <p className="text-center text-white font-medium text-sm">{ta.name}</p>
                   </div>
                 ))}
-                
+
                 {/* Show gray box only if there are exactly 9+ TAs */}
                 {tas.length >= 9 && (
                   <div className="bg-gray-600 rounded-lg p-3 flex items-center justify-center aspect-square">
@@ -156,7 +208,7 @@ function App() {
         {/* Right Side - Student Queue */}
         <div className="w-1/2 bg-white p-6">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Student Queue</h2>
-          
+
           {queue.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-gray-500 text-lg">No students in queue</p>
@@ -179,7 +231,7 @@ function App() {
                     <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-xl">
                       {animalEmoji}
                     </div>
-                    
+
                     {/* Student Info */}
                     <div className="flex-1">
                       <div className="flex items-center space-x-2">
@@ -193,7 +245,7 @@ function App() {
                   </div>
                 );
               })}
-              
+
               {/* More Students Indicator */}
               {queue.length > 10 && (
                 <div className="text-center text-gray-500 text-sm py-4">
@@ -207,7 +259,7 @@ function App() {
               )}
             </div>
           )}
-          
+
           {/* Add New Student Button */}
           <div className="mt-8">
             <button
