@@ -127,7 +127,7 @@ function App() {
                 </button>
               </div>
               
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-3 gap-4 border-2 border-white rounded-lg p-4">
                 {tas.slice(0, 8).map(ta => (
                   <div
                     key={ta.id}
