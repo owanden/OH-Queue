@@ -77,11 +77,6 @@ function App() {
     console.log("Dropping student", studentId);
     
     try {
-      if (studentId === '0' && queue.length !== 0) {
-        console.log("Serving next student");
-        const result =await serveNextStudent();
-        setQueue(queue.filter(entry => entry.student.id !== result.student.id));
-      }
       await dropStudent(studentId);
       setQueue(queue.filter(entry => entry.student.id !== studentId));
     } catch (error) {
