@@ -6,6 +6,14 @@ const api = axios.create({
   timeout: 10000,
 });
 
+let authToken: string | null = null;
+
+export const setAuthToken = (token: string | null) => {
+  authToken = token;
+  if (token) api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  else delete api.defaults.headers.common['Authorization'];
+};
+
 // TA Management
 export const addTA = async (name: string): Promise<TA> => {
   const response = await api.post('/tas', { name });
@@ -56,4 +64,20 @@ export const dropStudent = async (studentId: string): Promise<void> => {
 
 export const clearAllData = async (): Promise<void> => {
   await api.post('/clear');
+};
+
+// Auth & Rooms (MVP)
+export const login = async (username: string, password: string): Promise<{ token: string; user: any }> => {
+  const response = await api.post('/login', { username, password });
+  return response.data;
+};
+
+export const createRoom = async (name: string): Promise<any> => {
+  const response = await api.post('/rooms', { name });
+  return response.data;
+};
+
+export const getRoom = async (code: string): Promise<any> => {
+  const response = await api.get(`/rooms/${code}`);
+  return response.data;
 };

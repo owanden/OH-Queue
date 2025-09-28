@@ -25,7 +25,7 @@ const TAModal: React.FC<TAModalProps> = ({ onClose, onAdd }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4 border border-gray-600">
+      <div className="bg-[#232633] rounded-lg p-6 w-full max-w-md mx-4 border border-gray-600">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-gray-300">Add New TA</h2>
           <button

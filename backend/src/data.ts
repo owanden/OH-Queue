@@ -98,3 +98,43 @@ export const dataStore = {
     nextPosition = 1;
   }
 };
+
+// Rooms store for simple MVP
+interface Room {
+  code: string;
+  name: string;
+  createdBy: string;
+  createdAt: number;
+  queue: QueueEntry[];
+}
+
+const rooms: Record<string, Room> = {};
+
+function generateRoomCode(length = 6) {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // avoid confusing chars
+  let code = '';
+  for (let i = 0; i < length; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
+export const roomStore = {
+  createRoom: (name: string, createdBy: string, codeIn?: string) => {
+    let code = codeIn && typeof codeIn === 'string' ? codeIn.toUpperCase() : generateRoomCode();
+    // ensure uniqueness (unless caller explicitly requested existing code)
+    if (!codeIn) {
+      while (rooms[code]) code = generateRoomCode();
+    } else {
+      if (rooms[code]) {
+        // if already exists, return existing room
+        return rooms[code];
+      }
+    }
+    const room: Room = { code, name, createdBy, createdAt: Date.now(), queue: [] };
+    rooms[code] = room;
+    return room;
+  },
+
+  getRoom: (code: string) => {
+    return rooms[code] || null;
+  }
+};
