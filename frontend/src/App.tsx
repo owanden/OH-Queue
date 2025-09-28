@@ -102,7 +102,7 @@ function App() {
       {/* Main Content */}
       <div className="flex h-screen">
         {/* Left Side - TA Section */}
-        <div className="w-1/2 bg-blue-900 flex flex-col p-8">
+        <div className="w-1/2 bg-[#232633] flex flex-col p-8">
           {/* Title - Centered between top and TA list */}
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-white">Welcome to TA Office Hours</h1>
@@ -116,7 +116,7 @@ function App() {
                 <h2 className="text-xl text-white">Available TAs ({tas.length})</h2>
                 <button
                   onClick={() => setShowTAModal(true)}
-                  className="bg-blue-800 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors border-2 border-white"
+                  className="bg-[#232633] hover:bg-[#101017] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors border-2 border-white"
                 >
                   Add TA
                 </button>
@@ -149,7 +149,7 @@ function App() {
         </div>
 
         {/* Right Side - Student Queue */}
-        <div className="w-1/2 bg-white p-6">
+        <div className="w-1/2  bg-white p-6">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Student Queue</h2>
           
           {queue.length === 0 ? (
