@@ -13,15 +13,15 @@ A modern queue management system for office hours, designed for both students an
 
 ### Prerequisites
 
-- Node.js 18+ 
+- Node.js 22 (verified by CI)
 - pnpm (install with `npm install -g pnpm`)
 
 ### Installation
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
-cd oh-kiosk
+git clone https://github.com/owanden/OH-Queue.git
+cd OH-Queue
 ```
 
 2. Install dependencies:
@@ -29,16 +29,17 @@ cd oh-kiosk
 pnpm install
 ```
 
-3. Set up environment variables (optional for SMS):
-```bash
-# Copy the example file
-cp backend/.env.example backend/.env
+3. Copy `backend/env.example` to `backend/.env` and configure authentication:
 
-# Edit backend/.env with your Twilio credentials
-TWILIO_ACCOUNT_SID=your_account_sid
-TWILIO_AUTH_TOKEN=your_auth_token
-TWILIO_FROM_NUMBER=your_twilio_phone_number
-```
+| Variable | Required value |
+|---|---|
+| `ADMIN_USER` | Administrator login name |
+| `ADMIN_PASS` | Administrator password |
+| `JWT_SECRET` | Cryptographically random signing secret, at least 32 bytes |
+
+The backend refuses to start if authentication configuration is missing or the signing secret is too short. Keep credentials outside Git. Restarting with a new signing secret invalidates existing tokens. Run the backend from its workspace directory so dotenv reads `backend/.env`.
+
+Leave Twilio variables blank for local work without notifications. Notification configuration is optional; provider-backed messaging requires separate credentials and may incur provider charges. No real provider is used by the tests.
 
 ### Development
 
@@ -66,7 +67,7 @@ pnpm start
 - **Anonymous Display**: Get a fun display name (e.g., "Blue Llama")
 - **SMS Notifications**: Optional text alerts when it's your turn
 - **Queue Position**: See your position in real-time
-- **Privacy**: Phone numbers are hashed and never displayed
+- **Storage**: In-memory queue records include phone numbers and hashes; public queue responses still need data minimization before use with real student information.
 
 ### For TAs
 - **TA Management**: Add/remove yourself from active TA list
@@ -76,9 +77,21 @@ pnpm start
 
 ### Core Behavior
 - **Single Kiosk Screen**: Used by both students and TAs
-- **Secure Storage**: Phone numbers are salted and hashed
+- **Queue Storage**: Records are in memory and do not survive a backend restart.
 - **Real-time Updates**: Queue updates every 2 seconds
 - **Responsive Design**: Works on desktop and mobile devices
 
 
 ---
+
+## Authentication and checks
+
+Login at `POST /api/login` returns a six-hour HS256 token. Bearer authentication is required for room creation, TA addition/removal, serving/dropping queue entries, and the development-only clear route. Public reads and joining the queue remain available without a token. The former `/api/test-whatsapp` route is removed.
+
+```sh
+pnpm --filter oh-kiosk-backend test
+```
+
+The command compiles the backend and runs loopback HTTP tests with a fake notification function. It checks missing configuration at startup, credentials, valid/invalid/expired tokens, protected mutations, unchanged state/no notifications after denied requests, authenticated operations, and absence of the removed route. CI repeats installation from the frozen lockfile and these checks on Node.js 22.
+
+This is a shared administrator model, without per-room authorization, rate limiting, or persistent storage. Public response privacy remains separate follow-up work; authentication changes do not establish production readiness.
