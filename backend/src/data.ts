@@ -6,6 +6,9 @@ import { TA, Student, QueueEntry } from './types';
 let activeTAs: TA[] = [];
 let studentQueue: QueueEntry[] = [];
 let nextPosition = 1;
+const pendingPhones = new Set<string>();
+
+export class DuplicateStudentError extends Error {}
 
 // Generate anonymous display names
 const adjectives = ['Blue', 'Red', 'Green', 'Purple', 'Orange', 'Yellow', 'Pink', 'Cyan'];
@@ -44,24 +47,32 @@ export const dataStore = {
 
   // Student queue management
   addStudent: async (phoneNumber: string, topic?: string, consentToSMS: boolean = false): Promise<Student> => {
-    const phoneHash = await bcrypt.hash(phoneNumber, 10);
-    const student: Student = {
-      id: uuidv4(),
-      displayName: generateDisplayName(),
-      phoneNumber, // Store actual phone number for SMS
-      phoneHash,
-      topic,
-      consentToSMS,
-      addedAt: new Date()
-    };
+    if (pendingPhones.has(phoneNumber) || studentQueue.some(entry => entry.student.phoneNumber === phoneNumber)) {
+      throw new DuplicateStudentError('Student already in queue');
+    }
+    pendingPhones.add(phoneNumber);
+    try {
+      const phoneHash = await bcrypt.hash(phoneNumber, 10);
+      const student: Student = {
+        id: uuidv4(),
+        displayName: generateDisplayName(),
+        phoneNumber, // Store actual phone number for SMS
+        phoneHash,
+        topic,
+        consentToSMS,
+        addedAt: new Date()
+      };
 
-    const queueEntry: QueueEntry = {
-      student,
-      position: nextPosition++
-    };
+      const queueEntry: QueueEntry = {
+        student,
+        position: nextPosition++
+      };
 
-    studentQueue.push(queueEntry);
-    return student;
+      studentQueue.push(queueEntry);
+      return student;
+    } finally {
+      pendingPhones.delete(phoneNumber);
+    }
   },
 
   getQueue: (): QueueEntry[] => {
@@ -86,8 +97,7 @@ export const dataStore = {
   },
 
   getStudentByPhone: async (phoneNumber: string): Promise<Student | null> => {
-    const phoneHash = await bcrypt.hash(phoneNumber, 10);
-    const entry = studentQueue.find(entry => entry.student.phoneHash === phoneHash);
+    const entry = studentQueue.find(entry => entry.student.phoneNumber === phoneNumber);
     return entry ? entry.student : null;
   },
 

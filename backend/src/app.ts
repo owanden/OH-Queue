@@ -1,7 +1,8 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import jwt from 'jsonwebtoken';
-import { dataStore, roomStore } from './data';
+import { dataStore, roomStore, DuplicateStudentError } from './data';
+import { publicStudent, publicQueueEntry, publicRoom } from './public';
 import { readAuthConfig } from './auth';
 
 export function createApp(environment: NodeJS.ProcessEnv, sendWhatsApp: (phoneNumber: string, message: string) => Promise<boolean>) {
@@ -52,7 +53,7 @@ export function createApp(environment: NodeJS.ProcessEnv, sendWhatsApp: (phoneNu
       if (!name || typeof name !== 'string') return res.status(400).json({ error: 'Room name required' });
       const username = (req as any).user.username || 'unknown';
       const room = roomStore.createRoom(name, username);
-      res.status(201).json(room);
+      res.status(201).json(publicRoom(room));
     } catch (error) {
       console.error('Error creating room:', error);
       res.status(500).json({ error: 'Failed to create room' });
@@ -65,7 +66,7 @@ export function createApp(environment: NodeJS.ProcessEnv, sendWhatsApp: (phoneNu
       const { code } = req.params;
       const room = roomStore.getRoom(code);
       if (!room) return res.status(404).json({ error: 'Room not found' });
-      res.json(room);
+      res.json(publicRoom(room));
     } catch (error) {
       console.error('Error fetching room:', error);
       res.status(500).json({ error: 'Failed to fetch room' });
@@ -129,23 +130,20 @@ export function createApp(environment: NodeJS.ProcessEnv, sendWhatsApp: (phoneNu
         return res.status(400).json({ error: 'Phone number is required' });
       }
 
-      // Check if student is already in queue
-      const existingStudent = await dataStore.getStudentByPhone(phoneNumber);
-      if (existingStudent) {
-        return res.status(409).json({ error: 'Student already in queue' });
-      }
-
       const student = await dataStore.addStudent(phoneNumber, topic, consentToSMS || false);
       const queue = dataStore.getQueue();
       const position = queue.findIndex(entry => entry.student.id === student.id) + 1;
 
       res.json({
-        student,
+        student: publicStudent(student),
         position,
         queueLength: queue.length
       });
     } catch (error) {
-      console.error('Error adding student to queue:', error);
+      if (error instanceof DuplicateStudentError) {
+        return res.status(409).json({ error: 'Student already in queue' });
+      }
+      console.error('Error adding student to queue');
       res.status(500).json({ error: 'Failed to add student to queue' });
     }
   });
@@ -153,7 +151,7 @@ export function createApp(environment: NodeJS.ProcessEnv, sendWhatsApp: (phoneNu
   app.get('/api/queue', (req, res) => {
     try {
       const queue = dataStore.getQueue();
-      res.json(queue);
+      res.json(queue.map(publicQueueEntry));
     } catch (error) {
       console.error('Error getting queue:', error);
       res.status(500).json({ error: 'Failed to get queue' });
@@ -163,7 +161,7 @@ export function createApp(environment: NodeJS.ProcessEnv, sendWhatsApp: (phoneNu
   app.get('/api/queue/next', (req, res) => {
     try {
       const nextStudent = dataStore.getNextStudent();
-      res.json(nextStudent);
+      res.json(nextStudent ? publicQueueEntry(nextStudent) : null);
     } catch (error) {
       console.error('Error getting next student:', error);
       res.status(500).json({ error: 'Failed to get next student' });
@@ -195,14 +193,14 @@ export function createApp(environment: NodeJS.ProcessEnv, sendWhatsApp: (phoneNu
             }
           }
         } catch (notificationError) {
-          console.error('Error sending WhatsApp notification:', notificationError);
+          console.error('Error sending WhatsApp notification');
           // Don't fail the request if notification fails
         }
       }
 
       res.json({
         message: 'Student served successfully',
-        student: nextStudent.student
+        student: publicStudent(nextStudent.student)
       });
     } catch (error) {
       console.error('Error serving student:', error);
@@ -227,7 +225,6 @@ export function createApp(environment: NodeJS.ProcessEnv, sendWhatsApp: (phoneNu
 
           if (nextStudent.student.consentToSMS && nextStudent.student.phoneNumber) {
             try {
-              console.log("Sending WhatsApp notification to", nextStudent.student.phoneNumber);
               const message = `🎓 You're next in line! ${nextStudent.student.displayName}, please be ready.`;
               const notificationSent = await sendWhatsApp(nextStudent.student.phoneNumber, message);
 
@@ -237,7 +234,7 @@ export function createApp(environment: NodeJS.ProcessEnv, sendWhatsApp: (phoneNu
                 console.log(`Failed to send WhatsApp notification to ${nextStudent.student.displayName}`);
               }
             } catch (notificationError) {
-              console.error('Error sending WhatsApp notification:', notificationError);
+              console.error('Error sending WhatsApp notification');
               // Don't fail the request if notification fails
             }
           }

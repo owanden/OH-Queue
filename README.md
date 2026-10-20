@@ -67,7 +67,7 @@ pnpm start
 - **Anonymous Display**: Get a fun display name (e.g., "Blue Llama")
 - **SMS Notifications**: Optional text alerts when it's your turn
 - **Queue Position**: See your position in real-time
-- **Storage**: In-memory queue records include phone numbers and hashes; public queue responses still need data minimization before use with real student information.
+- **Response Fields**: Student responses include display information and omit the internal phone number and hash fields.
 
 ### For TAs
 - **TA Management**: Add/remove yourself from active TA list
@@ -94,4 +94,12 @@ pnpm --filter oh-kiosk-backend test
 
 The command compiles the backend and runs loopback HTTP tests with a fake notification function. It checks missing configuration at startup, credentials, valid/invalid/expired tokens, protected mutations, unchanged state/no notifications after denied requests, authenticated operations, and absence of the removed route. CI repeats installation from the frozen lockfile and these checks on Node.js 22.
 
-This is a shared administrator model, without per-room authorization, rate limiting, or persistent storage. Public response privacy remains separate follow-up work; authentication changes do not establish production readiness.
+This is a shared administrator model, without per-room authorization, rate limiting, or persistent storage. Phone recipients remain in process memory for notifications; free-text topics are not scrubbed. These boundaries do not establish production readiness.
+
+## Queue response boundaries
+
+Join, queue-list, next-student, room-queue, and serve responses use explicit display fields: `id`, `displayName`, optional `topic`, `consentToSMS`, and `addedAt`. They omit `phoneNumber` and `phoneHash`. Internal recipient records remain available to the notification sender. Routine notification success/failure logs omit recipient values, message bodies, and raw provider errors.
+
+Duplicate joins for the exact same phone string return 409, including concurrent requests during hashing. Admission reservations are released on hash failure, and a number may rejoin after its entry is removed. This is a single-process in-memory guarantee, without phone-format normalization, persistence, cross-instance coordination, or rate limiting. Numbers written into free-text fields are not automatically redacted.
+
+Tests use synthetic numbers, real loopback HTTP requests, concurrent submissions, injected hash failures, and a fake message client. No real provider is initialized or called by these checks.

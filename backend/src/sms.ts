@@ -1,32 +1,34 @@
 import twilio from 'twilio';
 import { SMSConfig } from './types';
 
-let twilioClient: twilio.Twilio | null = null;
+type MessageClient = {
+  messages: { create(options: { body: string; from: string; to: string }): Promise<unknown> };
+};
+
+export function createWhatsAppSender(client: MessageClient, fromNumber: string) {
+  return async (phoneNumber: string, message: string): Promise<boolean> => {
+    try {
+      const to = phoneNumber.startsWith('whatsapp:') ? phoneNumber : `whatsapp:${phoneNumber}`;
+      await client.messages.create({ body: message, from: fromNumber, to });
+      console.log('WhatsApp message sent');
+      return true;
+    } catch {
+      console.error('Failed to send WhatsApp message');
+      return false;
+    }
+  };
+}
+
+let sender: ReturnType<typeof createWhatsAppSender> | null = null;
 
 export const initializeWhatsApp = (config: SMSConfig) => {
-  twilioClient = twilio(config.accountSid, config.authToken);
+  sender = createWhatsAppSender(twilio(config.accountSid, config.authToken), config.fromNumber);
 };
 
 export const sendWhatsApp = async (phoneNumber: string, message: string): Promise<boolean> => {
-  if (!twilioClient) {
-    console.error('WhatsApp not initialized. Please set TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN environment variables.');
+  if (!sender) {
+    console.error('WhatsApp not initialized');
     return false;
   }
-
-  try {
-    // Format phone number for WhatsApp (ensure it starts with whatsapp:)
-    const whatsappNumber = phoneNumber.startsWith('whatsapp:') ? phoneNumber : `whatsapp:${phoneNumber}`;
-    const fromNumber = process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+14155238886'; // Twilio sandbox number
-
-    await twilioClient.messages.create({
-      body: message,
-      from: fromNumber,
-      to: whatsappNumber
-    });
-    console.log(`WhatsApp message sent to ${phoneNumber}: ${message}`);
-    return true;
-  } catch (error) {
-    console.error('Failed to send WhatsApp message:', error);
-    return false;
-  }
+  return sender(phoneNumber, message);
 };

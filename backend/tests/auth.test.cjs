@@ -4,15 +4,18 @@ const jwt = require('jsonwebtoken');
 const { spawnSync } = require('node:child_process');
 const path = require('node:path');
 const { createApp } = require('../dist/app');
-const { dataStore } = require('../dist/data');
+const { dataStore, roomStore } = require('../dist/data');
+const { createWhatsAppSender } = require('../dist/sms');
+const bcrypt = require('bcryptjs');
 
 const config = { ADMIN_USER: 'test-admin', ADMIN_PASS: 'test-password', JWT_SECRET: 'synthetic-test-key-'.repeat(3), NODE_ENV: 'development' };
-let server, base, notifications;
+let server, base, notifications, notificationError;
 
 beforeEach(async () => {
   dataStore.clearAll();
   notifications = [];
-  const app = createApp(config, async (...args) => { notifications.push(args); return true; });
+  notificationError = null;
+  const app = createApp(config, async (...args) => { notifications.push(args); if (notificationError) throw notificationError; return true; });
   server = await new Promise(resolve => {
     const listener = app.listen(0, '127.0.0.1', () => resolve(listener));
   });
@@ -111,4 +114,87 @@ test('server startup fails closed when signing configuration is absent', () => {
   assert.equal(result.status, 1);
   assert.match(result.stderr, /JWT_SECRET must contain at least 32 bytes/);
   assert.doesNotMatch(result.stdout, /Backend server running/);
+});
+
+function assertPublicStudent(student, internal) {
+  assert.deepEqual(Object.keys(student).sort(), ['addedAt', 'consentToSMS', 'displayName', 'id', 'topic']);
+  assert.equal(student.id, internal.id);
+  const encoded = JSON.stringify(student);
+  assert.ok(!encoded.includes(internal.phoneNumber));
+  assert.ok(!encoded.includes(internal.phoneHash));
+}
+
+test('join, queue, next, room and serve responses omit internal phone fields', async () => {
+  const response = await request('/api/queue', 'POST', { phoneNumber: '+15555550111', topic: 'synthetic', consentToSMS: false });
+  assert.equal(response.status, 200);
+  const joined = await response.json();
+  const internal = dataStore.getNextStudent().student;
+  assertPublicStudent(joined.student, internal);
+  assertPublicStudent((await (await request('/api/queue')).json())[0].student, internal);
+  assertPublicStudent((await (await request('/api/queue/next')).json()).student, internal);
+  const room = roomStore.createRoom('Privacy room', 'test-admin');
+  room.queue.push({ position: 1, student: internal });
+  const roomResponse = await (await request(`/api/rooms/${room.code}`)).json();
+  assertPublicStudent(roomResponse.queue[0].student, internal);
+  const served = await request('/api/queue/serve', 'POST', undefined, await login());
+  assert.equal(served.status, 200);
+  assertPublicStudent((await served.json()).student, internal);
+  assert.equal(await (await request('/api/queue/next')).json(), null);
+  assert.equal(notifications.length, 0);
+});
+
+test('sequential and simultaneous duplicate joins create exactly one active entry', async () => {
+  const body = { phoneNumber: '+15555550112', topic: 'synthetic' };
+  assert.equal((await request('/api/queue', 'POST', body)).status, 200);
+  assert.equal((await request('/api/queue', 'POST', body)).status, 409);
+  dataStore.clearAll();
+  const results = await Promise.all(Array.from({ length: 8 }, () => request('/api/queue', 'POST', body)));
+  assert.deepEqual(results.map(response => response.status).sort(), [200, 409, 409, 409, 409, 409, 409, 409]);
+  assert.equal(dataStore.getQueue().length, 1);
+  assert.equal((await dataStore.getStudentByPhone(body.phoneNumber)).id, dataStore.getNextStudent().student.id);
+  await request('/api/queue/serve', 'POST', undefined, await login());
+  assert.equal((await request('/api/queue', 'POST', body)).status, 200);
+});
+
+test('failed admission releases its reservation and does not log the phone', async t => {
+  const phone = '+15555550113';
+  const errors = [];
+  t.mock.method(console, 'error', (...args) => errors.push(args));
+  const hash = t.mock.method(bcrypt, 'hash', async () => { throw new Error(phone); });
+  assert.equal((await request('/api/queue', 'POST', { phoneNumber: phone })).status, 500);
+  assert.equal(dataStore.getQueue().length, 0);
+  hash.mock.restore();
+  assert.equal((await request('/api/queue', 'POST', { phoneNumber: phone })).status, 200);
+  assert.ok(!JSON.stringify(errors).includes(phone));
+});
+
+test('notification failures retain internal delivery recipients without logging them', async t => {
+  const logs = [];
+  t.mock.method(console, 'log', (...args) => logs.push(args));
+  t.mock.method(console, 'error', (...args) => logs.push(args));
+  const phones = ['+15555550114', '+15555550115', '+15555550116'];
+  for (const phone of phones) await dataStore.addStudent(phone, 'synthetic', true);
+  notificationError = new Error(phones.join(' '));
+  const token = await login();
+  assert.equal((await request('/api/queue/serve', 'POST', undefined, token)).status, 200);
+  const head = dataStore.getNextStudent();
+  assert.equal((await request(`/api/queue/${head.student.id}`, 'DELETE', undefined, token)).status, 200);
+  assert.deepEqual(notifications.map(call => call[0]), [phones[0], phones[2]]);
+  for (const phone of phones) assert.ok(!JSON.stringify(logs).includes(phone));
+});
+
+test('provider boundary formats requests and redacts success and error logs', async t => {
+  const logs = [], sent = [];
+  t.mock.method(console, 'log', (...args) => logs.push(args));
+  t.mock.method(console, 'error', (...args) => logs.push(args));
+  const phone = '+15555550117', message = 'synthetic-message';
+  const send = createWhatsAppSender({ messages: { create: async value => { sent.push(value); } } }, 'whatsapp:synthetic-sender');
+  assert.equal(await send(phone, message), true);
+  assert.deepEqual(sent[0], { to: `whatsapp:${phone}`, from: 'whatsapp:synthetic-sender', body: message });
+  await send(`whatsapp:${phone}`, message);
+  assert.equal(sent[1].to, `whatsapp:${phone}`);
+  const failing = createWhatsAppSender({ messages: { create: async () => { throw new Error(phone + message); } } }, 'synthetic-sender');
+  assert.equal(await failing(phone, message), false);
+  assert.ok(!JSON.stringify(logs).includes(phone));
+  assert.ok(!JSON.stringify(logs).includes(message));
 });
