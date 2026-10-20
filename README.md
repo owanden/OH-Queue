@@ -92,7 +92,7 @@ Login at `POST /api/login` returns a six-hour HS256 token. Bearer authentication
 pnpm --filter oh-kiosk-backend test
 ```
 
-The command compiles the backend and runs loopback HTTP tests with a fake notification function. It checks missing configuration at startup, credentials, valid/invalid/expired tokens, protected mutations, unchanged state/no notifications after denied requests, authenticated operations, and absence of the removed route. CI repeats installation from the frozen lockfile and these checks on Node.js 22.
+The command compiles the backend and runs loopback HTTP tests with a fake notification function. It checks missing configuration at startup, credentials, valid/invalid/expired tokens, protected mutations, unchanged state/no notifications after denied requests, authenticated operations, and absence of the removed route. CI repeats installation from the frozen lockfile, these backend checks, and the frontend production build on Node.js 22. Successful runs retain the static frontend output as the `oh-queue-frontend` artifact.
 
 This is a shared administrator model, without per-room authorization, rate limiting, or persistent storage. Phone recipients remain in process memory for notifications; free-text topics are not scrubbed. These boundaries do not establish production readiness.
 
@@ -103,3 +103,5 @@ Join, queue-list, next-student, room-queue, and serve responses use explicit dis
 Duplicate joins for the exact same phone string return 409, including concurrent requests during hashing. Admission reservations are released on hash failure, and a number may rejoin after its entry is removed. This is a single-process in-memory guarantee, without phone-format normalization, persistence, cross-instance coordination, or rate limiting. Numbers written into free-text fields are not automatically redacted.
 
 Tests use synthetic numbers, real loopback HTTP requests, concurrent submissions, injected hash failures, and a fake message client. No real provider is initialized or called by these checks.
+
+Verify both production builds from the workspace root with `pnpm build`. The frontend build runs TypeScript checks before Vite bundling; the backend build compiles TypeScript. These build artifacts are not a hosted deployment or an end-to-end UI validation.

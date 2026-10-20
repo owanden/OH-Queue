@@ -9,7 +9,7 @@ type Props = {
     onLeave: () => void;
 };
 
-export default function RoomView({ roomCode, token, asGuest, onLeave }: Props) {
+export default function RoomView({ roomCode, token, onLeave }: Props) {
     const [room, setRoom] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 

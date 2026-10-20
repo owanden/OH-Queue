@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { TA, QueueEntry } from './types';
-import { getTAs, getQueue, addTA, removeTA, addStudentToQueue, dropStudent, serveNextStudent, setAuthToken, getRoom } from './api';
+import { getTAs, getQueue, addTA, removeTA, addStudentToQueue, dropStudent, setAuthToken, getRoom } from './api';
 import TAModal from './components/TAModal';
 import StudentModal from './components/StudentModal';
 import Login from './components/Login';

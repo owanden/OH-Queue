@@ -9,7 +9,7 @@ interface TAModeProps {
   onQueueChange: (queue: QueueEntry[]) => void;
 }
 
-const TAMode: React.FC<TAModeProps> = ({ tas, queue, onTASChange, onQueueChange }) => {
+const TAMode: React.FC<TAModeProps> = ({ tas, queue, onTAsChange, onQueueChange }) => {
   const [taName, setTaName] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -20,7 +20,7 @@ const TAMode: React.FC<TAModeProps> = ({ tas, queue, onTASChange, onQueueChange 
     setLoading(true);
     try {
       const newTA = await addTA(taName);
-      onTASChange([...tas, newTA]);
+      onTAsChange([...tas, newTA]);
       setTaName('');
     } catch (error) {
       console.error('Failed to add TA:', error);
@@ -34,7 +34,7 @@ const TAMode: React.FC<TAModeProps> = ({ tas, queue, onTASChange, onQueueChange 
     setLoading(true);
     try {
       await removeTA(taId);
-      onTASChange(tas.filter(ta => ta.id !== taId));
+      onTAsChange(tas.filter(ta => ta.id !== taId));
     } catch (error) {
       console.error('Failed to remove TA:', error);
       alert('Failed to remove TA. Please try again.');
@@ -156,7 +156,7 @@ const TAMode: React.FC<TAModeProps> = ({ tas, queue, onTASChange, onQueueChange 
             {/* Queue Actions */}
             <div className="space-y-2">
               <h3 className="font-semibold text-gray-900">Queue Actions:</h3>
-              {queue.map((entry, index) => (
+              {queue.map((entry) => (
                 <div key={entry.student.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
                   <div className="flex items-center gap-4">
                     <span className="font-mono text-sm text-gray-500">#{entry.position}</span>
