@@ -54,7 +54,7 @@ const StudentModal: React.FC<StudentModalProps> = ({ onClose, onAdd }) => {
               disabled={loading}
             />
             <p className="mt-1 text-xs text-gray-500">
-              Your phone number will be stored securely and never displayed
+              Retained in server memory for notifications; omitted from queue responses.
             </p>
           </div>
 
@@ -86,10 +86,10 @@ const StudentModal: React.FC<StudentModalProps> = ({ onClose, onAdd }) => {
             </div>
             <div className="ml-3 text-sm">
               <label htmlFor="consent" className="font-medium text-gray-300">
-                Text me when I'm up
+                Notify me when I'm up
               </label>
               <p className="text-gray-500">
-                Check this box to receive an SMS notification when it's your turn
+                The local demo simulates notifications. Other environments require a configured provider.
               </p>
             </div>
           </div>

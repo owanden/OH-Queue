@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { TA, QueueEntry } from './types';
-import { getTAs, getQueue, addTA, removeTA, addStudentToQueue, dropStudent, setAuthToken, getRoom } from './api';
+import { getTAs, getQueue, addTA, removeTA, addStudentToQueue, dropStudent, serveNextStudent, setAuthToken, getRoom } from './api';
 import TAModal from './components/TAModal';
 import StudentModal from './components/StudentModal';
 import Login from './components/Login';
@@ -14,6 +14,7 @@ function App() {
   const [roomDetails, setRoomDetails] = useState<any | null>(null);
   const [showTAModal, setShowTAModal] = useState(false);
   const [showStudentModal, setShowStudentModal] = useState(false);
+  const canManage = Boolean(token) && !currentRoom?.asGuest;
 
   const fetchData = async () => {
     try {
@@ -116,6 +117,15 @@ function App() {
     }
   };
 
+  const handleServeNext = async () => {
+    try {
+      await serveNextStudent();
+      await fetchData();
+    } catch {
+      alert('Failed to serve the next student. Please sign in again if your session expired.');
+    }
+  };
+
   if (loading && !currentRoom) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
@@ -132,7 +142,13 @@ function App() {
     return (
       <Login
         onAuthenticated={(t, _u) => { setToken(t); }}
-        onEnterRoom={(code, asGuest) => setCurrentRoom({ code, asGuest })}
+        onEnterRoom={(code, asGuest) => {
+          if (asGuest) {
+            setAuthToken(null);
+            setToken(null);
+          }
+          setCurrentRoom({ code, asGuest });
+        }}
       />
     );
   }
@@ -141,20 +157,20 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Room header */}
-      <div className="bg-white border-b p-4 flex items-center justify-between">
+      <div className="bg-white text-gray-900 border-b p-4 flex items-center justify-between">
         <div>
           <h1 className="text-lg font-bold">{roomDetails ? `Room: ${roomDetails.name}` : `Room: ${currentRoom.code}`}</h1>
-          <p className="text-sm text-gray-500">Code: {currentRoom.code}</p>
+          <p className="text-sm text-gray-500">Code: {currentRoom.code} · {canManage ? 'Administrator' : 'Guest view'} · Shared queue across room codes</p>
         </div>
         <div>
-          <button onClick={() => setCurrentRoom(null)} className="px-3 py-1 border rounded">Leave Room</button>
+          <button onClick={() => setCurrentRoom(null)} className="px-3 py-1 border rounded bg-gray-700 text-white">Leave Room</button>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex h-screen">
+      <div className="flex flex-col md:flex-row min-h-screen">
         {/* Left Side - TA Section */}
-        <div className="w-1/2 bg-[#232633] flex flex-col p-8">
+        <div className="w-full md:w-1/2 bg-[#232633] flex flex-col p-8">
           {/* Title - Centered between top and TA list */}
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-white">Welcome to TA Office Hours</h1>
@@ -166,27 +182,30 @@ function App() {
               {/* TA Header with count and Add button - Positioned at grid corners */}
               <div className="absolute -top-12 left-0 right-0 flex items-center justify-between">
                 <h2 className="text-xl text-white">Available TAs ({tas.length})</h2>
-                <button
+                {canManage && <button
                   onClick={() => setShowTAModal(true)}
                   className="bg-[#232633] hover:bg-[#101017] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors border-2 border-white"
                 >
                   Add TA
-                </button>
+                </button>}
               </div>
 
               <div className="grid grid-cols-3 gap-4 border-2 border-white rounded-lg p-4">
                 {tas.slice(0, 8).map(ta => (
-                  <div
+                  <button
+                    type="button"
                     key={ta.id}
-                    onClick={() => handleRemoveTA(ta.id)}
+                    disabled={!canManage}
+                    aria-label={canManage ? `Remove TA ${ta.name}` : ta.name}
+                    onClick={canManage ? () => handleRemoveTA(ta.id) : undefined}
                     className="bg-gray-300 rounded-lg p-3 cursor-pointer hover:bg-gray-400 transition-colors group aspect-square"
                   >
                     {/* Placeholder for TA image - Square */}
                     <div className="w-full h-20 bg-gray-200 rounded-lg mb-2 flex items-center justify-center">
                       <span className="text-gray-500 text-xs">TA Photo</span>
                     </div>
-                    <p className="text-center text-white font-medium text-sm">{ta.name}</p>
-                  </div>
+                    <span className="block text-center text-gray-900 font-medium text-sm">{ta.name}</span>
+                  </button>
                 ))}
 
                 {/* Show gray box only if there are exactly 9+ TAs */}
@@ -201,8 +220,9 @@ function App() {
         </div>
 
         {/* Right Side - Student Queue */}
-        <div className="w-1/2  bg-white p-6">
+        <div className="w-full md:w-1/2 bg-white p-6">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Student Queue</h2>
+          {canManage && <button onClick={handleServeNext} disabled={queue.length === 0} className="mb-6 px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50">Serve Next Student</button>}
 
           {queue.length === 0 ? (
             <div className="text-center py-12">
@@ -219,8 +239,7 @@ function App() {
                 return (
                   <div
                     key={entry.student.id}
-                    onClick={() => handleDropStudent(entry.student.id)}
-                    className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg"
                   >
                     {/* Animal Avatar */}
                     <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-xl">
@@ -237,6 +256,7 @@ function App() {
                         <p className="text-sm text-gray-600 mt-1">{entry.student.topic}</p>
                       )}
                     </div>
+                    {canManage && <button onClick={() => handleDropStudent(entry.student.id)} className="px-3 py-1 border rounded bg-gray-700 text-white" aria-label={`Remove ${entry.student.displayName}`}>Remove</button>}
                   </div>
                 );
               })}

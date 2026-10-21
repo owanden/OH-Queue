@@ -19,7 +19,11 @@ export default function Login({ onAuthenticated, onEnterRoom }: Props) {
             setAuthToken(res.token);
             onAuthenticated(res.token, res.user.username);
 
-            // Immediately prompt to create a room and navigate into it
+            if (roomCode.trim()) {
+                const room = await getRoom(roomCode.trim().toUpperCase());
+                onEnterRoom(room.code, false);
+                return;
+            }
             const name = prompt('Room name to create:');
             if (name) {
                 const room = await createRoom(name);
@@ -33,16 +37,14 @@ export default function Login({ onAuthenticated, onEnterRoom }: Props) {
         }
     };
 
-    // Room creation is handled immediately after successful sign-in
-
     const handleGuestEnter = async () => {
         if (!roomCode) return alert('Enter a room code');
         // Verify room exists
         setLoading(true);
         try {
-            const room = await getRoom(roomCode);
+            const room = await getRoom(roomCode.trim().toUpperCase());
             if (!room) return alert('Room not found');
-            onEnterRoom(roomCode, true);
+            onEnterRoom(room.code, true);
         } catch (err) {
             alert('Room not found');
         } finally {
@@ -55,6 +57,7 @@ export default function Login({ onAuthenticated, onEnterRoom }: Props) {
             <div className="w-full max-w-md bg-white p-6 rounded shadow">
                 <h1 className="text-2xl font-bold mb-4">Sign in or continue as guest</h1>
 
+                <p className="mb-4 text-sm text-gray-600">Room codes share one queue. Enter a code to join an existing room, or leave it blank when signing in to create one.</p>
                 <div className="space-y-3">
                     <input className="w-full border px-3 py-2 rounded" placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} />
                     <input className="w-full border px-3 py-2 rounded" placeholder="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} />

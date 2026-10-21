@@ -9,6 +9,10 @@ A modern queue management system for office hours, designed for both students an
 - **Package Manager**: pnpm workspaces
 - **Data Storage**: In-memory (easily switchable to PostgreSQL)
 
+## Local demo
+
+Run `pnpm install --frozen-lockfile --ignore-scripts`, then `pnpm demo`. The [guest/admin walkthrough](docs/demo.md) includes seeded local credentials, synthetic data, a verified screenshot, and simulated notifications. No provider credentials are needed. Room codes currently share a single in-memory queue and TA list.
+
 ## Quick Start
 
 ### Prerequisites
