@@ -54,24 +54,26 @@ export default function Login({ onAuthenticated, onEnterRoom }: Props) {
 
     return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-            <div className="w-full max-w-md bg-white p-6 rounded shadow">
+            <div className="w-full max-w-md bg-white text-gray-900 p-6 rounded shadow">
                 <h1 className="text-2xl font-bold mb-4">Sign in or continue as guest</h1>
 
                 <p className="mb-4 text-sm text-gray-600">Each room has its own queue and TA list. Enter a code to join an existing room, or leave it blank when signing in to create one.</p>
-                <div className="space-y-3">
-                    <input className="w-full border px-3 py-2 rounded" placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} />
-                    <input className="w-full border px-3 py-2 rounded" placeholder="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} />
-                    <button onClick={handleSignIn} className="w-full bg-blue-600 text-white py-2 rounded">{loading ? 'Signing in...' : 'Sign in'}</button>
+                <form className="space-y-3" onSubmit={e => { e.preventDefault(); handleSignIn(); }}>
+                    <label htmlFor="username" className="block text-sm font-medium">Username</label>
+                    <input id="username" autoComplete="username" required disabled={loading} className="w-full border px-3 py-2 rounded" placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} />
+                    <label htmlFor="password" className="block text-sm font-medium">Password</label>
+                    <input id="password" autoComplete="current-password" required disabled={loading} className="w-full border px-3 py-2 rounded" placeholder="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} />
+                    <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white py-2 rounded">{loading ? 'Signing in...' : 'Sign in'}</button>
 
                     <div className="my-2 text-center text-gray-400">or</div>
 
+                    <label htmlFor="roomCode" className="block text-sm font-medium">Room code</label>
                     <div className="flex space-x-2">
-                        <input className="flex-1 border px-3 py-2 rounded" placeholder="Enter room code" value={roomCode} onChange={e => setRoomCode(e.target.value)} />
-                        <button onClick={handleGuestEnter} className="bg-gray-200 px-4 rounded">Guest</button>
+                        <input id="roomCode" disabled={loading} className="min-w-0 flex-1 border px-3 py-2 rounded" placeholder="Enter room code" value={roomCode} onChange={e => setRoomCode(e.target.value)} />
+                        <button type="button" disabled={loading} onClick={handleGuestEnter} className="bg-gray-200 px-4 rounded">Guest</button>
                     </div>
 
-                    {/* Room creation is only available via the Sign in flow */}
-                </div>
+                </form>
             </div>
         </div>
     );

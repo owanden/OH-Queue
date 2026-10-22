@@ -34,3 +34,8 @@ To inspect a second room, leave the admin view, sign in with the room code blank
 Automated checks start the actual demo backend on a random loopback port, inspect its seeded room, join as a guest, reject anonymous serving, sign in, serve with a simulated notification, and confirm the queue is empty. Additional real HTTP checks exercise two rooms, room-local concurrent duplicates, wrong-room IDs, scoped clear/serve, public metadata and removed global routes. These checks run with deliberately irrelevant provider environment values and never invoke a real provider. The frontend production build is also checked in CI; the browser walkthrough above was checked locally.
 
 This is local functionality evidence, without public hosting, real messages, load measurements, durable state, or separate administrator permissions per room. Use synthetic information when reproducing it.
+
+
+## Keyboard controls
+
+Login has persistent Username, Password and Room code labels. Enter in the sign-in form submits credentials; Guest remains a separate button. Add TA and Add New Student open named native dialogs, move focus to the first field and keep background controls inactive. Escape, Cancel and the named close button dismiss a dialog; focus returns to its opener. Successful submission also restores opener focus. The browser preview uses the same dialogs with its existing read-only synthetic fields. Current browsers with native HTML dialog support are required.
