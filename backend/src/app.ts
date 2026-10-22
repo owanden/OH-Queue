@@ -1,7 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import jwt from 'jsonwebtoken';
-import { dataStore, roomStore, DuplicateStudentError } from './data';
+import { roomStore, DuplicateStudentError } from './data';
 import { publicStudent, publicQueueEntry, publicRoom } from './public';
 import { readAuthConfig } from './auth';
 
@@ -60,13 +60,18 @@ export function createApp(environment: NodeJS.ProcessEnv, sendWhatsApp: (phoneNu
     }
   });
 
+  app.use('/api/rooms/:code', (req, res, next) => {
+    if (!roomStore.getRoom(req.params.code)) return res.status(404).json({ error: 'Room not found' });
+    next();
+  });
+
   // Get room details (public)
   app.get('/api/rooms/:code', (req, res) => {
     try {
       const { code } = req.params;
       const room = roomStore.getRoom(code);
       if (!room) return res.status(404).json({ error: 'Room not found' });
-      res.json(publicRoom(room));
+      res.json(publicRoom({ ...room, queue: roomStore.getDataStore(code)!.getQueue() }));
     } catch (error) {
       console.error('Error fetching room:', error);
       res.status(500).json({ error: 'Failed to fetch room' });
@@ -74,8 +79,9 @@ export function createApp(environment: NodeJS.ProcessEnv, sendWhatsApp: (phoneNu
   });
 
   // TA Management
-  app.post('/api/tas', requireAuth, async (req, res) => {
+  app.post('/api/rooms/:code/tas', requireAuth, async (req, res) => {
     try {
+      const dataStore = roomStore.getDataStore(req.params.code)!;
       const { name } = req.body;
       if (!name || typeof name !== 'string') {
         return res.status(400).json({ error: 'Name is required' });
@@ -89,8 +95,9 @@ export function createApp(environment: NodeJS.ProcessEnv, sendWhatsApp: (phoneNu
     }
   });
 
-  app.delete('/api/tas/:id', requireAuth, (req, res) => {
+  app.delete('/api/rooms/:code/tas/:id', requireAuth, (req, res) => {
     try {
+      const dataStore = roomStore.getDataStore(req.params.code)!;
       const { id } = req.params;
       console.log('Backend: Attempting to remove TA with ID:', id);
       console.log('Backend: Current TAs:', dataStore.getActiveTAs().map(ta => ({ id: ta.id, name: ta.name })));
@@ -111,8 +118,9 @@ export function createApp(environment: NodeJS.ProcessEnv, sendWhatsApp: (phoneNu
     }
   });
 
-  app.get('/api/tas', (req, res) => {
+  app.get('/api/rooms/:code/tas', (req, res) => {
     try {
+      const dataStore = roomStore.getDataStore(req.params.code)!;
       const tas = dataStore.getActiveTAs();
       res.json(tas);
     } catch (error) {
@@ -122,8 +130,9 @@ export function createApp(environment: NodeJS.ProcessEnv, sendWhatsApp: (phoneNu
   });
 
   // Student Queue Management
-  app.post('/api/queue', async (req, res) => {
+  app.post('/api/rooms/:code/queue', async (req, res) => {
     try {
+      const dataStore = roomStore.getDataStore(req.params.code)!;
       const { phoneNumber, topic, consentToSMS } = req.body;
 
       if (!phoneNumber || typeof phoneNumber !== 'string') {
@@ -148,8 +157,9 @@ export function createApp(environment: NodeJS.ProcessEnv, sendWhatsApp: (phoneNu
     }
   });
 
-  app.get('/api/queue', (req, res) => {
+  app.get('/api/rooms/:code/queue', (req, res) => {
     try {
+      const dataStore = roomStore.getDataStore(req.params.code)!;
       const queue = dataStore.getQueue();
       res.json(queue.map(publicQueueEntry));
     } catch (error) {
@@ -158,8 +168,9 @@ export function createApp(environment: NodeJS.ProcessEnv, sendWhatsApp: (phoneNu
     }
   });
 
-  app.get('/api/queue/next', (req, res) => {
+  app.get('/api/rooms/:code/queue/next', (req, res) => {
     try {
+      const dataStore = roomStore.getDataStore(req.params.code)!;
       const nextStudent = dataStore.getNextStudent();
       res.json(nextStudent ? publicQueueEntry(nextStudent) : null);
     } catch (error) {
@@ -168,8 +179,9 @@ export function createApp(environment: NodeJS.ProcessEnv, sendWhatsApp: (phoneNu
     }
   });
 
-  app.post('/api/queue/serve', requireAuth, async (req, res) => {
+  app.post('/api/rooms/:code/queue/serve', requireAuth, async (req, res) => {
     try {
+      const dataStore = roomStore.getDataStore(req.params.code)!;
       const nextStudent = dataStore.serveNextStudent();
 
       if (!nextStudent) {
@@ -208,8 +220,9 @@ export function createApp(environment: NodeJS.ProcessEnv, sendWhatsApp: (phoneNu
     }
   });
 
-  app.delete('/api/queue/:studentId', requireAuth, async (req, res) => {
+  app.delete('/api/rooms/:code/queue/:studentId', requireAuth, async (req, res) => {
     try {
+      const dataStore = roomStore.getDataStore(req.params.code)!;
       const { studentId } = req.params;
       const queue = dataStore.getQueue();
 
@@ -257,7 +270,8 @@ export function createApp(environment: NodeJS.ProcessEnv, sendWhatsApp: (phoneNu
 
   // Development route to clear all data
   if (environment.NODE_ENV === 'development') {
-    app.post('/api/clear', requireAuth, (req, res) => {
+    app.post('/api/rooms/:code/clear', requireAuth, (req, res) => {
+      const dataStore = roomStore.getDataStore(req.params.code)!;
       dataStore.clearAll();
       res.json({ message: 'All data cleared' });
     });

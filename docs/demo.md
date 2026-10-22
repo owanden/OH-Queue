@@ -23,12 +23,14 @@ The demo backend binds only to 127.0.0.1, seeds room `DEMO01`, creates a fresh r
 
 ![Administrator view with synthetic queue data](demo.png)
 
-The screenshot comes from the local browser walkthrough with synthetic information. Anonymous names vary on each run.
+This earlier local walkthrough capture uses synthetic information and predates the room-specific header. The current header reads Room queue. Anonymous names vary on each run.
 
 ## Verified boundaries
 
-The active interface polls the global `/api/queue` and `/api/tas` endpoints. Room records provide metadata and an entry code; all room codes currently share the same queue and TA list. This walkthrough does not establish per-room isolation. The separate unused RoomView component and room metadata queue are not the active live queue. Shared storage is in memory and does not survive restart.
+The active interface polls `/api/rooms/:code/queue` and `/api/rooms/:code/tas`. Each room owns its queue, TA list, position counter and pending duplicate reservations. Room metadata exposes a public projection of its current queue. Unknown/missing codes do not fall back to global state. The configured administrator still manages all rooms; room codes are public entry identifiers rather than private membership credentials. Storage remains in memory and does not survive restart.
 
-Automated checks start the actual demo backend on a random loopback port, inspect its seeded room, join as a guest, reject anonymous serving, sign in, serve with a simulated notification, and confirm the queue is empty. These checks run with deliberately irrelevant provider environment values and never invoke a real provider. The frontend production build is also checked in CI; the browser walkthrough above was checked locally.
+To inspect a second room, leave the admin view, sign in with the room code blank and name the new room when prompted. Its queue and TA list start empty. Enter `DEMO01` again to see that room's own state. A pending response from an earlier room visit is ignored by the interface; already submitted mutations still apply to their original room.
 
-This is local functionality evidence, without public hosting, real messages, load measurements, durable state, or multi-room authorization. Use synthetic information when reproducing it.
+Automated checks start the actual demo backend on a random loopback port, inspect its seeded room, join as a guest, reject anonymous serving, sign in, serve with a simulated notification, and confirm the queue is empty. Additional real HTTP checks exercise two rooms, room-local concurrent duplicates, wrong-room IDs, scoped clear/serve, public metadata and removed global routes. These checks run with deliberately irrelevant provider environment values and never invoke a real provider. The frontend production build is also checked in CI; the browser walkthrough above was checked locally.
+
+This is local functionality evidence, without public hosting, real messages, load measurements, durable state, or separate administrator permissions per room. Use synthetic information when reproducing it.

@@ -57,7 +57,7 @@ export default function Login({ onAuthenticated, onEnterRoom }: Props) {
             <div className="w-full max-w-md bg-white p-6 rounded shadow">
                 <h1 className="text-2xl font-bold mb-4">Sign in or continue as guest</h1>
 
-                <p className="mb-4 text-sm text-gray-600">Room codes share one queue. Enter a code to join an existing room, or leave it blank when signing in to create one.</p>
+                <p className="mb-4 text-sm text-gray-600">Each room has its own queue and TA list. Enter a code to join an existing room, or leave it blank when signing in to create one.</p>
                 <div className="space-y-3">
                     <input className="w-full border px-3 py-2 rounded" placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} />
                     <input className="w-full border px-3 py-2 rounded" placeholder="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} />

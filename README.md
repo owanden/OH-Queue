@@ -7,7 +7,7 @@ A modern queue management system for office hours, designed for both students an
 - **Backend**: Node.js + Express + TypeScript
 - **Frontend**: React + TypeScript + Vite + Tailwind CSS
 - **Package Manager**: pnpm workspaces
-- **Data Storage**: In-memory (easily switchable to PostgreSQL)
+- **Data Storage**: In-memory, scoped by room
 
 ## Browser preview
 
@@ -17,7 +17,7 @@ Build the static preview with `pnpm --filter oh-kiosk-frontend build:browser-pre
 
 ## Local demo
 
-Run `pnpm install --frozen-lockfile --ignore-scripts`, then `pnpm demo`. The [guest/admin walkthrough](docs/demo.md) includes seeded local credentials, synthetic data, a verified screenshot, and simulated notifications. No provider credentials are needed. Room codes currently share a single in-memory queue and TA list.
+Run `pnpm install --frozen-lockfile --ignore-scripts`, then `pnpm demo`. The [guest/admin walkthrough](docs/demo.md) includes seeded local credentials, synthetic data, a verified screenshot, and simulated notifications. No provider credentials are needed. Each room code now selects its own in-memory queue and TA list.
 
 ## Quick Start
 
@@ -115,3 +115,16 @@ Duplicate joins for the exact same phone string return 409, including concurrent
 Tests use synthetic numbers, real loopback HTTP requests, concurrent submissions, injected hash failures, and a fake message client. No real provider is initialized or called by these checks.
 
 Verify both production builds from the workspace root with `pnpm build`. The frontend build runs TypeScript checks before Vite bundling; the backend build compiles TypeScript. These build artifacts are not a hosted deployment or an end-to-end UI validation.
+
+
+## Room API
+
+Create a room with authenticated `POST /api/rooms`, then use its returned code in every queue/TA request:
+
+- `GET /api/rooms/:code` returns metadata and the current public queue projection.
+- `GET` / `POST /api/rooms/:code/queue` reads/joins that room.
+- `GET /api/rooms/:code/queue/next`, authenticated `POST /api/rooms/:code/queue/serve` and `DELETE /api/rooms/:code/queue/:studentId` address that room only.
+- `GET` / authenticated `POST /api/rooms/:code/tas` and authenticated `DELETE /api/rooms/:code/tas/:id` manage that room's TAs.
+- Development-only authenticated `POST /api/rooms/:code/clear` clears that room.
+
+The former unscoped `/api/queue`, `/api/tas` and `/api/clear` routes return 404; clients must supply a room code in the URL. Unknown room codes return 404 and never create/fall back to a shared queue. Duplicate admission and position counters are room-local. The configured administrator can manage all rooms; knowing a room code permits public reads and joins. This is state separation, not per-room administrator authorization. All rooms are discarded on process restart.

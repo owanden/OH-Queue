@@ -3,11 +3,12 @@ import { QueueEntry } from '../types';
 import { addStudentToQueue } from '../api';
 
 interface StudentModeProps {
+  roomCode: string;
   queue: QueueEntry[];
   onQueueChange: (queue: QueueEntry[]) => void;
 }
 
-const StudentMode: React.FC<StudentModeProps> = ({ queue, onQueueChange }) => {
+const StudentMode: React.FC<StudentModeProps> = ({ roomCode, queue, onQueueChange }) => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [topic, setTopic] = useState('');
   const [consentToSMS, setConsentToSMS] = useState(false);
@@ -21,7 +22,7 @@ const StudentMode: React.FC<StudentModeProps> = ({ queue, onQueueChange }) => {
 
     setLoading(true);
     try {
-      const result = await addStudentToQueue(phoneNumber, topic, consentToSMS);
+      const result = await addStudentToQueue(phoneNumber, topic, consentToSMS, roomCode);
       setStudentInfo({
         displayName: result.student.displayName,
         position: result.position

@@ -2,12 +2,6 @@ import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
 import { TA, Student, QueueEntry } from './types';
 
-// In-memory data storage
-let activeTAs: TA[] = [];
-let studentQueue: QueueEntry[] = [];
-let nextPosition = 1;
-const pendingPhones = new Set<string>();
-
 export class DuplicateStudentError extends Error {}
 
 // Generate anonymous display names
@@ -20,94 +14,100 @@ function generateDisplayName(): string {
   return `${adjective} ${animal}`;
 }
 
-export const dataStore = {
-  // TA management
-  addTA: (name: string): TA => {
-    const ta: TA = {
-      id: uuidv4(),
-      name: name.trim(),
-      isActive: true
-    };
-    activeTAs.push(ta);
-    return ta;
-  },
-
-  removeTA: (taId: string): boolean => {
-    const index = activeTAs.findIndex(ta => ta.id === taId);
-    if (index !== -1) {
-      activeTAs.splice(index, 1);
-      return true;
-    }
-    return false;
-  },
-
-  getActiveTAs: (): TA[] => {
-    return activeTAs.filter(ta => ta.isActive);
-  },
-
-  // Student queue management
-  addStudent: async (phoneNumber: string, topic?: string, consentToSMS: boolean = false): Promise<Student> => {
-    if (pendingPhones.has(phoneNumber) || studentQueue.some(entry => entry.student.phoneNumber === phoneNumber)) {
-      throw new DuplicateStudentError('Student already in queue');
-    }
-    pendingPhones.add(phoneNumber);
-    try {
-      const phoneHash = await bcrypt.hash(phoneNumber, 10);
-      const student: Student = {
+export function createDataStore() {
+  let activeTAs: TA[] = [];
+  let studentQueue: QueueEntry[] = [];
+  let nextPosition = 1;
+  const pendingPhones = new Set<string>();
+  return {
+    // TA management
+    addTA: (name: string): TA => {
+      const ta: TA = {
         id: uuidv4(),
-        displayName: generateDisplayName(),
-        phoneNumber, // Store actual phone number for SMS
-        phoneHash,
-        topic,
-        consentToSMS,
-        addedAt: new Date()
+        name: name.trim(),
+        isActive: true
       };
+      activeTAs.push(ta);
+      return ta;
+    },
 
-      const queueEntry: QueueEntry = {
-        student,
-        position: nextPosition++
-      };
+    removeTA: (taId: string): boolean => {
+      const index = activeTAs.findIndex(ta => ta.id === taId);
+      if (index !== -1) {
+        activeTAs.splice(index, 1);
+        return true;
+      }
+      return false;
+    },
 
-      studentQueue.push(queueEntry);
-      return student;
-    } finally {
-      pendingPhones.delete(phoneNumber);
+    getActiveTAs: (): TA[] => {
+      return activeTAs.filter(ta => ta.isActive);
+    },
+
+    // Student queue management
+    addStudent: async (phoneNumber: string, topic?: string, consentToSMS: boolean = false): Promise<Student> => {
+      if (pendingPhones.has(phoneNumber) || studentQueue.some(entry => entry.student.phoneNumber === phoneNumber)) {
+        throw new DuplicateStudentError('Student already in queue');
+      }
+      pendingPhones.add(phoneNumber);
+      try {
+        const phoneHash = await bcrypt.hash(phoneNumber, 10);
+        const student: Student = {
+          id: uuidv4(),
+          displayName: generateDisplayName(),
+          phoneNumber, // Store actual phone number for SMS
+          phoneHash,
+          topic,
+          consentToSMS,
+          addedAt: new Date()
+        };
+
+        const queueEntry: QueueEntry = {
+          student,
+          position: nextPosition++
+        };
+
+        studentQueue.push(queueEntry);
+        return student;
+      } finally {
+        pendingPhones.delete(phoneNumber);
+      }
+    },
+
+    getQueue: (): QueueEntry[] => {
+      return [...studentQueue].sort((a, b) => a.position - b.position);
+    },
+
+    getNextStudent: (): QueueEntry | null => {
+      return studentQueue.length > 0 ? studentQueue[0] : null;
+    },
+
+    serveNextStudent: (): QueueEntry | null => {
+      return studentQueue.shift() || null;
+    },
+
+    dropStudent: (studentId: string): boolean => {
+      const index = studentQueue.findIndex(entry => entry.student.id === studentId);
+      if (index !== -1) {
+        studentQueue.splice(index, 1);
+        return true;
+      }
+      return false;
+    },
+
+    getStudentByPhone: async (phoneNumber: string): Promise<Student | null> => {
+      const entry = studentQueue.find(entry => entry.student.phoneNumber === phoneNumber);
+      return entry ? entry.student : null;
+    },
+
+    // Utility functions
+    clearAll: (): void => {
+      activeTAs = [];
+      studentQueue = [];
+      nextPosition = 1;
     }
-  },
-
-  getQueue: (): QueueEntry[] => {
-    return [...studentQueue].sort((a, b) => a.position - b.position);
-  },
-
-  getNextStudent: (): QueueEntry | null => {
-    return studentQueue.length > 0 ? studentQueue[0] : null;
-  },
-
-  serveNextStudent: (): QueueEntry | null => {
-    return studentQueue.shift() || null;
-  },
-
-  dropStudent: (studentId: string): boolean => {
-    const index = studentQueue.findIndex(entry => entry.student.id === studentId);
-    if (index !== -1) {
-      studentQueue.splice(index, 1);
-      return true;
-    }
-    return false;
-  },
-
-  getStudentByPhone: async (phoneNumber: string): Promise<Student | null> => {
-    const entry = studentQueue.find(entry => entry.student.phoneNumber === phoneNumber);
-    return entry ? entry.student : null;
-  },
-
-  // Utility functions
-  clearAll: (): void => {
-    activeTAs = [];
-    studentQueue = [];
-    nextPosition = 1;
-  }
-};
+  };
+}
 
 // Rooms store for simple MVP
 interface Room {
@@ -118,7 +118,8 @@ interface Room {
   queue: QueueEntry[];
 }
 
-const rooms: Record<string, Room> = {};
+const rooms: Record<string, Room> = Object.create(null);
+const roomData: Record<string, ReturnType<typeof createDataStore>> = Object.create(null);
 
 function generateRoomCode(length = 6) {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // avoid confusing chars
@@ -141,10 +142,17 @@ export const roomStore = {
     }
     const room: Room = { code, name, createdBy, createdAt: Date.now(), queue: [] };
     rooms[code] = room;
+    roomData[code] = createDataStore();
     return room;
   },
 
   getRoom: (code: string) => {
-    return rooms[code] || null;
+    return rooms[code.toUpperCase()] || null;
+  },
+
+  getDataStore: (code: string) => roomData[code.toUpperCase()] ?? null,
+
+  clearAll: () => {
+    for (const code of Object.keys(rooms)) { delete rooms[code]; delete roomData[code]; }
   }
 };

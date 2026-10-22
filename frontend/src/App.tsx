@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { TA, QueueEntry } from './types';
 import { getTAs, getQueue, addTA, removeTA, addStudentToQueue, dropStudent, serveNextStudent, setAuthToken, getRoom } from './api';
 import TAModal from './components/TAModal';
@@ -14,28 +14,35 @@ function App({ preview = false }: { preview?: boolean }) {
   const [roomDetails, setRoomDetails] = useState<any | null>(null);
   const [showTAModal, setShowTAModal] = useState(false);
   const [showStudentModal, setShowStudentModal] = useState(false);
+  const viewVersion = useRef(0);
   const canManage = Boolean(token) && !currentRoom?.asGuest;
 
-  const fetchData = async () => {
+  const fetchData = async (version = viewVersion.current) => {
+    const roomCode = currentRoom?.code;
+    if (!roomCode) return;
     try {
       const [tasData, queueData] = await Promise.all([
-        getTAs(),
-        getQueue()
+        getTAs(roomCode),
+        getQueue(roomCode)
       ]);
+      if (version !== viewVersion.current) return;
       setTAs(tasData);
       setQueue(queueData);
     } catch (error) {
-      console.error('Failed to fetch data:', error);
+      if (version === viewVersion.current) console.error('Failed to fetch data:', error);
     } finally {
-      setLoading(false);
+      if (version === viewVersion.current) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 2000); // Refresh every 2 seconds
+    if (!currentRoom) { setLoading(false); return; }
+    const version = viewVersion.current;
+    const refresh = () => fetchData(version);
+    refresh();
+    const interval = setInterval(refresh, 2000);
     return () => clearInterval(interval);
-  }, []);
+  }, [currentRoom?.code]);
 
   useEffect(() => {
     if (preview) { setAuthToken(token); return; }
@@ -54,36 +61,51 @@ function App({ preview = false }: { preview?: boolean }) {
       setRoomDetails(null);
       return;
     }
+    let active = true;
+    const version = viewVersion.current;
     (async () => {
       try {
         const r = await getRoom(currentRoom.code);
-        setRoomDetails(r);
+        if (active && version === viewVersion.current) setRoomDetails(r);
       } catch (err) {
-        console.error('Failed to fetch room details', err);
-        setRoomDetails(null);
+        if (active && version === viewVersion.current) {
+          console.error('Failed to fetch room details', err);
+          setRoomDetails(null);
+        }
       }
     })();
+    return () => { active = false; };
   }, [currentRoom]);
 
   const handleAddTA = async (name: string) => {
+    const roomCode = currentRoom?.code;
+    if (!roomCode) return;
+    const version = viewVersion.current;
     try {
-      const newTA = await addTA(name);
+      const newTA = await addTA(name, roomCode);
+      if (version !== viewVersion.current) return;
       setTAs([...tas, newTA]);
       setShowTAModal(false);
     } catch (error) {
+      if (version !== viewVersion.current) return;
       console.error('Failed to add TA:', error);
       alert('Failed to add TA. Please try again.');
     }
   };
 
   const handleRemoveTA = async (taId: string) => {
+    const roomCode = currentRoom?.code;
+    if (!roomCode) return;
+    const version = viewVersion.current;
     try {
       console.log('Attempting to remove TA with ID:', taId);
-      await removeTA(taId);
+      await removeTA(taId, roomCode);
+      if (version !== viewVersion.current) return;
       console.log('Successfully removed TA from backend');
       setTAs(tas.filter(ta => ta.id !== taId));
       console.log('Updated frontend state');
     } catch (error: any) {
+      if (version !== viewVersion.current) return;
       console.error('Failed to remove TA:', error);
       console.error('Error details:', error.response?.data || error.message);
       alert(`Failed to remove TA. Error: ${error.response?.data?.error || error.message}`);
@@ -91,11 +113,16 @@ function App({ preview = false }: { preview?: boolean }) {
   };
 
   const handleAddStudent = async (phoneNumber: string, topic: string, consentToSMS: boolean) => {
+    const roomCode = currentRoom?.code;
+    if (!roomCode) return;
+    const version = viewVersion.current;
     try {
-      const result = await addStudentToQueue(phoneNumber, topic, consentToSMS);
+      const result = await addStudentToQueue(phoneNumber, topic, consentToSMS, roomCode);
+      if (version !== viewVersion.current) return;
       setQueue([...queue, { student: result.student, position: result.position }]);
       setShowStudentModal(false);
     } catch (error: any) {
+      if (version !== viewVersion.current) return;
       console.error('Failed to add student:', error);
       if (error.response?.status === 409) {
         alert('You are already in the queue!');
@@ -107,22 +134,32 @@ function App({ preview = false }: { preview?: boolean }) {
 
 
   const handleDropStudent = async (studentId: string) => {
+    const roomCode = currentRoom?.code;
+    if (!roomCode) return;
+    const version = viewVersion.current;
     console.log("Dropping student", studentId);
 
     try {
-      await dropStudent(studentId);
+      await dropStudent(studentId, roomCode);
+      if (version !== viewVersion.current) return;
       setQueue(queue.filter(entry => entry.student.id !== studentId));
     } catch (error) {
+      if (version !== viewVersion.current) return;
       console.error('Failed to drop student:', error);
       alert('Failed to drop student. Please try again.');
     }
   };
 
   const handleServeNext = async () => {
+    const roomCode = currentRoom?.code;
+    if (!roomCode) return;
+    const version = viewVersion.current;
     try {
-      await serveNextStudent();
+      await serveNextStudent(roomCode);
+      if (version !== viewVersion.current) return;
       await fetchData();
     } catch {
+      if (version !== viewVersion.current) return;
       alert('Failed to serve the next student. Please sign in again if your session expired.');
     }
   };
@@ -144,6 +181,11 @@ function App({ preview = false }: { preview?: boolean }) {
       <Login
         onAuthenticated={(t, _u) => { setToken(t); }}
         onEnterRoom={(code, asGuest) => {
+          viewVersion.current++;
+          setQueue([]);
+          setTAs([]);
+          setRoomDetails(null);
+          setLoading(true);
           if (asGuest) {
             setAuthToken(null);
             setToken(null);
@@ -161,14 +203,23 @@ function App({ preview = false }: { preview?: boolean }) {
       <div className="bg-white text-gray-900 border-b p-4 flex items-center justify-between">
         <div>
           <h1 className="text-lg font-bold">{roomDetails ? `Room: ${roomDetails.name}` : `Room: ${currentRoom.code}`}</h1>
-          <p className="text-sm text-gray-500">Code: {currentRoom.code} · {canManage ? 'Administrator' : 'Guest view'} · {preview ? 'Browser-only sample queue' : 'Shared queue across room codes'}</p>
+          <p className="text-sm text-gray-500">Code: {currentRoom.code} · {canManage ? 'Administrator' : 'Guest view'} · {preview ? 'Browser-only sample queue' : 'Room queue'}</p>
         </div>
         <div>
           <button onClick={() => {
             if (preview) {
               setCurrentRoom({ code: 'PREVIEW', asGuest: canManage });
               setToken(canManage ? null : 'browser-preview');
-            } else setCurrentRoom(null);
+            } else {
+              viewVersion.current++;
+              setCurrentRoom(null);
+              setRoomDetails(null);
+              setQueue([]);
+              setTAs([]);
+              setShowTAModal(false);
+              setShowStudentModal(false);
+              setLoading(false);
+            }
           }} className="px-3 py-1 border rounded bg-gray-700 text-white">{preview ? (canManage ? 'Switch to Guest' : 'Switch to Administrator') : 'Leave Room'}</button>
         </div>
       </div>

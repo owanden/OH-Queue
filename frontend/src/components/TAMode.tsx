@@ -3,13 +3,14 @@ import { TA, QueueEntry } from '../types';
 import { addTA, removeTA, serveNextStudent, dropStudent } from '../api';
 
 interface TAModeProps {
+  roomCode: string;
   tas: TA[];
   queue: QueueEntry[];
   onTAsChange: (tas: TA[]) => void;
   onQueueChange: (queue: QueueEntry[]) => void;
 }
 
-const TAMode: React.FC<TAModeProps> = ({ tas, queue, onTAsChange, onQueueChange }) => {
+const TAMode: React.FC<TAModeProps> = ({ roomCode, tas, queue, onTAsChange, onQueueChange }) => {
   const [taName, setTaName] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -19,7 +20,7 @@ const TAMode: React.FC<TAModeProps> = ({ tas, queue, onTAsChange, onQueueChange 
 
     setLoading(true);
     try {
-      const newTA = await addTA(taName);
+      const newTA = await addTA(taName, roomCode);
       onTAsChange([...tas, newTA]);
       setTaName('');
     } catch (error) {
@@ -33,7 +34,7 @@ const TAMode: React.FC<TAModeProps> = ({ tas, queue, onTAsChange, onQueueChange 
   const handleRemoveTA = async (taId: string) => {
     setLoading(true);
     try {
-      await removeTA(taId);
+      await removeTA(taId, roomCode);
       onTAsChange(tas.filter(ta => ta.id !== taId));
     } catch (error) {
       console.error('Failed to remove TA:', error);
@@ -46,7 +47,7 @@ const TAMode: React.FC<TAModeProps> = ({ tas, queue, onTAsChange, onQueueChange 
   const handleServeNext = async () => {
     setLoading(true);
     try {
-      const result = await serveNextStudent();
+      const result = await serveNextStudent(roomCode);
       // Refresh queue data
       onQueueChange(queue.filter(entry => entry.student.id !== result.student.id));
       alert(`Served: ${result.student.displayName}`);
@@ -63,7 +64,7 @@ const TAMode: React.FC<TAModeProps> = ({ tas, queue, onTAsChange, onQueueChange 
 
     setLoading(true);
     try {
-      await dropStudent(studentId);
+      await dropStudent(studentId, roomCode);
       onQueueChange(queue.filter(entry => entry.student.id !== studentId));
     } catch (error) {
       console.error('Failed to drop student:', error);
