@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 
 interface TAModalProps {
+  sampleOnly?: boolean;
   onClose: () => void;
   onAdd: (name: string) => void;
 }
 
-const TAModal: React.FC<TAModalProps> = ({ onClose, onAdd }) => {
-  const [name, setName] = useState('');
+const TAModal: React.FC<TAModalProps> = ({ onClose, onAdd, sampleOnly = false }) => {
+  const [name, setName] = useState(sampleOnly ? 'Sample TA' : '');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -44,6 +45,7 @@ const TAModal: React.FC<TAModalProps> = ({ onClose, onAdd }) => {
             <input
               type="text"
               id="taName"
+              readOnly={sampleOnly}
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Enter TA name"

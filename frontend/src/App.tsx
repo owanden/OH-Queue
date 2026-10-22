@@ -5,12 +5,12 @@ import TAModal from './components/TAModal';
 import StudentModal from './components/StudentModal';
 import Login from './components/Login';
 
-function App() {
+function App({ preview = false }: { preview?: boolean }) {
   const [tas, setTAs] = useState<TA[]>([]);
   const [queue, setQueue] = useState<QueueEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem('authToken'));
-  const [currentRoom, setCurrentRoom] = useState<{ code: string; asGuest: boolean } | null>(null);
+  const [token, setToken] = useState<string | null>(() => preview ? 'browser-preview' : localStorage.getItem('authToken'));
+  const [currentRoom, setCurrentRoom] = useState<{ code: string; asGuest: boolean } | null>(preview ? { code: 'PREVIEW', asGuest: false } : null);
   const [roomDetails, setRoomDetails] = useState<any | null>(null);
   const [showTAModal, setShowTAModal] = useState(false);
   const [showStudentModal, setShowStudentModal] = useState(false);
@@ -38,6 +38,7 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (preview) { setAuthToken(token); return; }
     if (token) {
       setAuthToken(token);
       localStorage.setItem('authToken', token);
@@ -45,7 +46,7 @@ function App() {
       setAuthToken(null);
       localStorage.removeItem('authToken');
     }
-  }, [token]);
+  }, [token, preview]);
 
   // When a room is entered, fetch its details
   useEffect(() => {
@@ -160,10 +161,15 @@ function App() {
       <div className="bg-white text-gray-900 border-b p-4 flex items-center justify-between">
         <div>
           <h1 className="text-lg font-bold">{roomDetails ? `Room: ${roomDetails.name}` : `Room: ${currentRoom.code}`}</h1>
-          <p className="text-sm text-gray-500">Code: {currentRoom.code} · {canManage ? 'Administrator' : 'Guest view'} · Shared queue across room codes</p>
+          <p className="text-sm text-gray-500">Code: {currentRoom.code} · {canManage ? 'Administrator' : 'Guest view'} · {preview ? 'Browser-only sample queue' : 'Shared queue across room codes'}</p>
         </div>
         <div>
-          <button onClick={() => setCurrentRoom(null)} className="px-3 py-1 border rounded bg-gray-700 text-white">Leave Room</button>
+          <button onClick={() => {
+            if (preview) {
+              setCurrentRoom({ code: 'PREVIEW', asGuest: canManage });
+              setToken(canManage ? null : 'browser-preview');
+            } else setCurrentRoom(null);
+          }} className="px-3 py-1 border rounded bg-gray-700 text-white">{preview ? (canManage ? 'Switch to Guest' : 'Switch to Administrator') : 'Leave Room'}</button>
         </div>
       </div>
 
@@ -290,6 +296,7 @@ function App() {
       {/* Modal Components */}
       {showTAModal && (
         <TAModal
+          sampleOnly={preview}
           onClose={() => setShowTAModal(false)}
           onAdd={handleAddTA}
         />
@@ -297,6 +304,7 @@ function App() {
 
       {showStudentModal && (
         <StudentModal
+          sampleOnly={preview}
           onClose={() => setShowStudentModal(false)}
           onAdd={handleAddStudent}
         />

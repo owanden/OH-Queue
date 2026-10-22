@@ -7,7 +7,9 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "start": "vite preview",
-    "demo": "vite --host 127.0.0.1 --strictPort"
+    "demo": "vite --host 127.0.0.1 --strictPort",
+    "build:browser-preview": "tsc && vite build --config vite.preview.config.ts",
+    "test:browser-preview": "node --experimental-strip-types --test preview/*.test.mjs"
   },
   "dependencies": {
     "react": "^18.2.0",

@@ -17,8 +17,15 @@ jobs:
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm --filter oh-kiosk-backend test
       - run: pnpm --filter oh-kiosk-frontend build
+      - run: pnpm --filter oh-kiosk-frontend test:browser-preview
+      - run: pnpm --filter oh-kiosk-frontend build:browser-preview
       - uses: actions/upload-artifact@v4
         with:
           name: oh-queue-frontend
           path: frontend/dist/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: oh-queue-browser-preview
+          path: frontend/dist-preview/
           if-no-files-found: error

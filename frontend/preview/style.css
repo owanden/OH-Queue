@@ -1,0 +1,7 @@
+.preview-banner { padding: 20px 24px; background: #0f172a; color: #f1f5f9; border-bottom: 2px solid #67e8f9; }
+.preview-banner strong { font-size: 1.25rem; }
+.preview-banner p { margin: 8px 0; max-width: 80ch; }
+.preview-banner nav { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; }
+.preview-banner a { color: #a5f3fc; text-decoration: underline; }
+.preview-banner button { padding: 6px 12px; border: 1px solid #94a3b8; border-radius: 6px; }
+.preview-banner :focus-visible { outline: 3px solid #67e8f9; outline-offset: 3px; }

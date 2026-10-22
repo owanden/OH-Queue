@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 
 interface StudentModalProps {
+  sampleOnly?: boolean;
   onClose: () => void;
   onAdd: (phoneNumber: string, topic: string, consentToSMS: boolean) => void;
 }
 
-const StudentModal: React.FC<StudentModalProps> = ({ onClose, onAdd }) => {
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [topic, setTopic] = useState('');
+const StudentModal: React.FC<StudentModalProps> = ({ onClose, onAdd, sampleOnly = false }) => {
+  const [phoneNumber, setPhoneNumber] = useState(sampleOnly ? '+15555550121' : '');
+  const [topic, setTopic] = useState(sampleOnly ? 'Synthetic queue example' : '');
   const [consentToSMS, setConsentToSMS] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -46,6 +47,7 @@ const StudentModal: React.FC<StudentModalProps> = ({ onClose, onAdd }) => {
             <input
               type="tel"
               id="phoneNumber"
+              readOnly={sampleOnly}
               value={phoneNumber}
               onChange={(e) => setPhoneNumber(e.target.value)}
               placeholder="(555) 123-4567"
@@ -54,7 +56,7 @@ const StudentModal: React.FC<StudentModalProps> = ({ onClose, onAdd }) => {
               disabled={loading}
             />
             <p className="mt-1 text-xs text-gray-500">
-              Retained in server memory for notifications; omitted from queue responses.
+              {sampleOnly ? 'Fixed synthetic value. Nothing is sent or stored outside this tab.' : 'Retained in server memory for notifications; omitted from queue responses.'}
             </p>
           </div>
 
@@ -64,6 +66,7 @@ const StudentModal: React.FC<StudentModalProps> = ({ onClose, onAdd }) => {
             </label>
             <textarea
               id="topic"
+              readOnly={sampleOnly}
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
               placeholder="Briefly describe what you need help with..."
@@ -81,7 +84,7 @@ const StudentModal: React.FC<StudentModalProps> = ({ onClose, onAdd }) => {
                 checked={consentToSMS}
                 onChange={(e) => setConsentToSMS(e.target.checked)}
                 className="focus:ring-blue-500 h-4 w-4 text-blue-600 bg-gray-700 border-gray-600 rounded"
-                disabled={loading}
+                disabled={loading || sampleOnly}
               />
             </div>
             <div className="ml-3 text-sm">
@@ -89,7 +92,7 @@ const StudentModal: React.FC<StudentModalProps> = ({ onClose, onAdd }) => {
                 Notify me when I'm up
               </label>
               <p className="text-gray-500">
-                The local demo simulates notifications. Other environments require a configured provider.
+                {sampleOnly ? 'Notifications are disabled in this browser preview.' : 'The local demo simulates notifications. Other environments require a configured provider.'}
               </p>
             </div>
           </div>

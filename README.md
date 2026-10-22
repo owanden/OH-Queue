@@ -9,6 +9,12 @@ A modern queue management system for office hours, designed for both students an
 - **Package Manager**: pnpm workspaces
 - **Data Storage**: In-memory (easily switchable to PostgreSQL)
 
+## Browser preview
+
+[Try the synthetic browser preview](https://owanden.github.io/demos/office-hours-queue/) without installation. It uses the existing interface with a separate in-tab sample adapter: no backend requests, credential entry, real recipients or notifications. Role switching is simulated; each tab has its own state, and reload resets it. The full-stack local demo below exercises the actual API and authentication.
+
+Build the static preview with `pnpm --filter oh-kiosk-frontend build:browser-preview`; serve `frontend/dist-preview/` using any static server. Its HTML blocks connection requests with a content policy. The preview build rejects inclusion of the real API module or Axios, while the normal `pnpm build` retains the authenticated API client. CI checks both builds, sample-state behavior and backend auth, and retains the separate `oh-queue-browser-preview` artifact. See [preview build details](docs/browser-preview.md).
+
 ## Local demo
 
 Run `pnpm install --frozen-lockfile --ignore-scripts`, then `pnpm demo`. The [guest/admin walkthrough](docs/demo.md) includes seeded local credentials, synthetic data, a verified screenshot, and simulated notifications. No provider credentials are needed. Room codes currently share a single in-memory queue and TA list.
