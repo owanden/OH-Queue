@@ -11,7 +11,8 @@
     "dev": "pnpm run --parallel dev",
     "build": "pnpm run --recursive build",
     "start": "pnpm run --parallel start",
-    "demo": "pnpm --filter oh-kiosk-backend build && pnpm -r --parallel demo"
+    "demo": "pnpm --filter oh-kiosk-backend build && pnpm -r --parallel demo",
+    "test:publisher": "node --test scripts/publish-preview.test.mjs"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

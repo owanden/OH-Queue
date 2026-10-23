@@ -15,6 +15,7 @@ jobs:
           node-version: '22'
           cache: pnpm
       - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: pnpm test:publisher
       - run: pnpm --filter oh-kiosk-backend test
       - run: pnpm --filter oh-kiosk-frontend build
       - run: pnpm --filter oh-kiosk-frontend test:browser-preview
